@@ -4,9 +4,9 @@ Data: 2026-04-06
 
 ## Objetivo
 
-Criar um sistema de enforcement de metodologia de desenvolvimento AI-assisted com 7 fases, que garante compliance via SQLite state machine + hooks + skills instaláveis, distribuído como npm package (`@henryavila/atomic-flow`).
+Criar um sistema de enforcement de metodologia de desenvolvimento AI-assisted com 7 fases, que garante compliance via SQLite state machine + MCP server + hooks + skills instaláveis, distribuído como npm package (`@henryavila/atomic-flow`).
 
-O projeto tem 3 camadas: método (skills que ensinam), enforcer (SQLite + hooks que garantem), distribuição (CLI que instala).
+O projeto tem 3 camadas: método (skills que ensinam), enforcer (MCP server + SQLite + hooks que garantem), distribuição (CLI que instala). O usuário interage via skills ou conversa natural — nunca precisa sair do Claude Code durante o workflow.
 
 ---
 
@@ -30,11 +30,32 @@ O projeto tem 3 camadas: método (skills que ensinam), enforcer (SQLite + hooks 
   - ✓ reinstalação com arquivo não modificado → sobrescreve silenciosamente
   - ✗ arquivo modificado localmente + package mudou → prompt: overwrite/keep/diff
 
+- **RF04b:** `atomic-flow install` configura MCP server em `.mcp.json` para expor tools nativos no Claude Code
+  - ✓ `.mcp.json` criado com server `atomic-flow` apontando para `node_modules/@henryavila/atomic-flow/src/mcp-server.js`
+  - ✓ MCP tools disponíveis: gate_approve, preflight, status, transition, new_feature, validate_spec, task_done, learn, reconcile, open_ui
+  - ✓ tools lazy-loaded (só carregam schema quando invocados — ~95% economia de contexto)
+  - ✗ MCP server falha ao iniciar → erro com diagnóstico (SQLite ausente? Node versão?)
+
+- **RF04c:** Fases podem ser ativadas por skill explícita OU por conversa natural com a AI
+  - ✓ explícito: `/atomic-flow:1-research "autenticação"` → skill ativada diretamente
+  - ✓ natural: "quero implementar autenticação" → AI detecta intent, invoca skill internamente
+  - ✓ ambos os caminhos resultam no mesmo fluxo (MCP new_feature → worktree → research)
+  - ✗ AI ativa fase sem feature existente → MCP retorna erro, skill orienta criar feature primeiro
+
+- **RF04d:** Cada feature roda em git worktree isolado, criado e gerenciado de forma transparente ao usuário
+  - ✓ MCP `new_feature` cria worktree via `git worktree add` automaticamente
+  - ✓ AI usa `EnterWorktree` (tool nativo do Claude Code) para entrar no worktree — usuário não percebe
+  - ✓ `.ai/` e SQLite criados dentro do worktree (isolados por feature)
+  - ✓ ship (Fase 7): merge branch do worktree → cleanup → `ExitWorktree`
+  - ✗ worktree já existe para a feature → entra no existente, não cria novo
+  - ✗ merge conflict no ship → reporta ao humano para resolver manualmente
+
 ### Feature Lifecycle
 
-- **RF05:** `npx atomic-flow new <name>` cria feature com ID sequencial e estrutura de diretórios
-  - ✓ primeira feature → `.ai/features/001-{name}/` com tracking.md e spec.md template
-  - ✓ terceira feature → `.ai/features/003-{name}/` (auto-incremento)
+- **RF05:** Criação de feature via MCP `new_feature` — ID sequencial, worktree isolado, estrutura de diretórios
+  - ✓ primeira feature → worktree criado, `.ai/features/001-{name}/` com tracking.md + spec.md template
+  - ✓ terceira feature → `003-{name}` (auto-incremento lido do SQLite do repo principal)
+  - ✓ chamado internamente pela skill ou por conversa natural — usuário nunca roda CLI para isso
   - ✗ nome com caracteres inválidos → erro com sugestão de slug válido
 
 - **RF06:** Transições de fase são enforçadas pelo SQLite — transições inválidas são impossíveis
@@ -255,6 +276,7 @@ O projeto tem 3 camadas: método (skills que ensinam), enforcer (SQLite + hooks 
 - `src/ui/review.html` — novo — implementation — annotation tool
 - `src/ui/shared.css` — novo — implementation — estilos compartilhados (funcional, não polished)
 - `src/ui/shared.js` — novo — implementation — lógica compartilhada (SQLite queries, rendering)
+- `src/mcp-server.js` — novo — implementation — MCP server (stdio transport, expõe tools)
 - `src/export.js` — novo — implementation — SQLite → markdown export
 - `src/hydrate.js` — novo — implementation — markdown → SQLite hydration
 - `skills/en/1-research.md` — novo — implementation — `atomic-flow:1-research`
@@ -311,6 +333,22 @@ O projeto tem 3 camadas: método (skills que ensinam), enforcer (SQLite + hooks 
 ### RF02: Skill rendering
 - **TC-RF02-1** [business]: {skill com {{BASH_TOOL}}} → {output: "Bash", sem "{{BASH_TOOL}}"}
 - **TC-RF02-2** [boundary]: {skill com {{#if ide.gemini}}} → {bloco removido para claude-code}
+
+### RF04b: MCP Server
+- **TC-RF04b-1** [business]: {install completo} → {`.mcp.json` existe, MCP server inicia, tools listados}
+- **TC-RF04b-2** [business]: {AI chama mcp gate_approve("G1")} → {SQLite atualizado, transição habilitada}
+- **TC-RF04b-3** [error]: {MCP server sem SQLite} → {erro descritivo: "Run atomic-flow install first"}
+
+### RF04c: Dual activation
+- **TC-RF04c-1** [business]: {user invoca /atomic-flow:1-research "auth"} → {skill ativada, feature criada}
+- **TC-RF04c-2** [business]: {user diz "quero implementar auth"} → {AI detecta intent, invoca skill}
+- **TC-RF04c-3** [edge]: {user diz "implementar auth" sem feature existente} → {MCP cria feature, depois ativa research}
+
+### RF04d: Worktree transparente
+- **TC-RF04d-1** [business]: {MCP new_feature("auth")} → {worktree criado, AI entra via EnterWorktree, user não percebe}
+- **TC-RF04d-2** [business]: {ship concluído} → {branch merged, worktree removido, AI volta via ExitWorktree}
+- **TC-RF04d-3** [edge]: {worktree já existe} → {entra no existente}
+- **TC-RF04d-4** [error]: {merge conflict no ship} → {reporta ao humano}
 
 ### RF05: New feature
 - **TC-RF05-1** [business]: {atomic-flow new "user-login"} → {.ai/features/001-user-login/ criado com tracking.md + spec.md template}
