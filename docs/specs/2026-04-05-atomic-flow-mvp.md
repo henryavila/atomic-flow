@@ -1,206 +1,416 @@
 # Spec: Atomic Flow MVP
 
-Data: 2026-04-05
+Data: 2026-04-06
 
 ## Objetivo
 
-Criar o npm package `@henryavila/atomic-flow` que instala a metodologia Atomic Flow (7 fases, tracking determinístico, gates humanos) como skills executáveis para Claude Code, incluindo uma annotation tool para revisão humana de specs.
+Criar um sistema de enforcement de metodologia de desenvolvimento AI-assisted com 7 fases, que garante compliance via SQLite state machine + hooks + skills instaláveis, distribuído como npm package (`@henryavila/atomic-flow`).
+
+O projeto tem 3 camadas: método (skills que ensinam), enforcer (SQLite + hooks que garantem), distribuição (CLI que instala).
+
+---
 
 ## Requisitos Funcionais
 
-- **RF01:** `npx @henryavila/atomic-flow install` abre CLI interativo que instala skills, cria diretório de tracking, e merge hooks
-  - ✓ projeto sem atomic-flow instalado → instala 9 skills em `.claude/skills/`, cria `.ai/tracking/`, merge hooks em `.claude/settings.json`, cria manifest em `.atomic-flow/manifest.json`
-  - ✗ projeto sem node >= 18 → mensagem de erro clara com versão mínima
+### Distribuição
 
-- **RF02:** Instala 9 skills (af1-research a af7-ship + af-status + af-gate) em `.claude/skills/{skill-name}/SKILL.md`
-  - ✓ após install, cada skill existe como `SKILL.md` no diretório correto com YAML frontmatter (name + description)
-  - ✗ diretório `.claude/skills/` não existe → cria automaticamente
+- **RF01:** `npx @henryavila/atomic-flow install` instala skills, inicializa SQLite, configura hooks e cria estrutura de diretórios
+  - ✓ projeto limpo → 9 skills em `.claude/skills/atomic-flow/`, SQLite em `.ai/atomic-flow.db`, hooks em `.claude/settings.json`, `.ai/features/` criado
+  - ✗ Node < 18 → erro "Node.js >= 18 required", exit 1
 
-- **RF03:** Cria diretório `.ai/tracking/` no projeto alvo
-  - ✓ diretório criado com template de tracking copiado
-  - ✗ `.ai/tracking/` já existe → não sobrescreve, mantém conteúdo existente
+- **RF02:** Skills renderizadas com template vars e instaladas no namespace `atomic-flow:`
+  - ✓ skill `1-research.md` renderizada → `.claude/skills/atomic-flow/1-research/SKILL.md` com `{{BASH_TOOL}}` substituído por `Bash`
+  - ✗ template var não substituída no output → var permanece como `{{BASH_TOOL}}` literal
 
-- **RF04:** Merge hooks de SessionStart no `.claude/settings.json` do projeto alvo
-  - ✓ hooks adicionados ao array SessionStart sem remover hooks existentes do usuário
-  - ✗ `.claude/settings.json` não existe → cria com apenas os hooks do atomic-flow
-  - ✗ hooks do atomic-flow já existem → não duplica
+- **RF03:** `npx @henryavila/atomic-flow uninstall` remove skills, hooks, SQLite e diretório `.ai/features/`
+  - ✓ remove tudo, projeto volta ao estado pré-install
+  - ✗ features com tracking ativo (phase != done) → avisa e pede confirmação
 
-- **RF05:** `npx @henryavila/atomic-flow uninstall` remove todos os artefatos instalados
-  - ✓ remove skills, tracking dir (se vazio), hooks, manifest
-  - ✗ tracking dir contém arquivos de feature em progresso → avisa e não remove
+- **RF04:** Manifest em `.atomic-flow/manifest.json` rastreia arquivos instalados com hashes
+  - ✓ reinstalação com arquivo não modificado → sobrescreve silenciosamente
+  - ✗ arquivo modificado localmente + package mudou → prompt: overwrite/keep/diff
 
-- **RF06:** Manifest em `.atomic-flow/manifest.json` rastreia arquivos instalados com hashes SHA-256
-  - ✓ manifest criado no install com lista de arquivos + hashes
-  - ✗ reinstalação com arquivo localmente modificado → 3-hash conflict detection (installed_hash vs current_hash vs new_hash)
+### Feature Lifecycle
 
-- **RF07:** `npx @henryavila/atomic-flow review <spec.md>` abre annotation tool no browser
-  - ✓ abre localhost em porta livre, renderiza Markdown como HTML, permite seleção + comentário, salva JSON sidecar
-  - ✗ arquivo não existe → mensagem de erro com path
+- **RF05:** `npx atomic-flow new <name>` cria feature com ID sequencial e estrutura de diretórios
+  - ✓ primeira feature → `.ai/features/001-{name}/` com tracking.md e spec.md template
+  - ✓ terceira feature → `.ai/features/003-{name}/` (auto-incremento)
+  - ✗ nome com caracteres inválidos → erro com sugestão de slug válido
+
+- **RF06:** Transições de fase são enforçadas pelo SQLite — transições inválidas são impossíveis
+  - ✓ research → spec → aceito (transição válida)
+  - ✓ spec → decompose com G1 approved → aceito
+  - ✗ spec → implement (pula decompose) → trigger RAISE(ABORT), transição bloqueada
+  - ✗ decompose → implement com G2 pending → trigger RAISE(ABORT), gate não aprovado
+
+- **RF07:** Gates (G1, G2, G3) requerem aprovação humana explícita via CLI ou skill
+  - ✓ humano executa `atomic-flow gate approve G1` → gate atualizado no SQLite, transição habilitada
+  - ✗ AI tenta aprovar gate via edição de markdown → SQLite não reflete, transição continua bloqueada
+  - ✗ gate rejeitado → fase volta à anterior, motivo registrado no SQLite
+
+- **RF07b:** `atomic-flow preflight G{N}` roda checks automáticos antes de cada gate e apresenta flags na UI
+  - ✓ G1 preflight: Layer 1 (6 checks estruturais) + Layer 3 (8 dimensões AI) → lista de flags
+  - ✓ G2 preflight: contract-RF cross-reference (AI semântico) + task atomicidade (>3 files?) + colisão de arquivos entre tasks + dependências cíclicas + spec delta desde G1 + TCs faltando para novos contratos
+  - ✓ G3 preflight: convergence check (CRITICAL+HIGH diminuindo?) + spec completude (todos RF implementados?) + drift detection (spec_hash) + orphan detection (files não declarados)
+  - ✓ resultado mostrado na UI `/feature/:id` com flags acionáveis (link para arquivo/trecho relevante)
+  - ✓ checks determinísticos (atomicidade, colisão, deps, delta, TCs) = 100% confiável
+  - ✓ checks AI (contract-RF cross-ref, completude) = pré-processado, humano valida flags
+  - ✗ zero flags → approve rápido com confiança
+  - ✗ flags pendentes não resolvidos → `atomic-flow gate approve` mostra warning "N flags unresolved"
+
+### Spec & Validation
+
+- **RF08:** `atomic-flow ui` abre Local UI no browser — server único para dashboard, review e detalhe de feature
+  - ✓ abre localhost em porta livre com 3 páginas: `/dashboard`, `/feature/:id`, `/review/:id`
+  - ✓ dados lidos do SQLite via sql.js
   - ✗ porta em uso → tenta próxima porta
+  - ✗ SQLite ausente → erro com instrução de rodar install primeiro
+
+- **RF09:** Página `/dashboard` mostra overview de todas as features com progresso visual
+  - ✓ lista features com: nome, fase atual, barra de progresso (tasks done/total), gates (✅⏳❌)
+  - ✓ última atualização por feature, total de learnings acumulados
+  - ✓ cross-feature queries (features in_progress, taxa de strikes, features com drift)
+  - ✗ zero features → mensagem "Nenhuma feature. Crie com atomic-flow new <name>"
+
+- **RF10:** Página `/feature/:id` mostra detalhe de uma feature
+  - ✓ diagrama de fases (qual ativa, quais concluídas)
+  - ✓ tabela de tasks (status, strikes, commit)
+  - ✓ gates com timestamp + quem aprovou
+  - ✓ learnings desta feature
+  - ✓ link para `/review/:id` (annotation tool)
+  - ✗ feature ID não existe → erro 404 com lista de features válidas
+
+- **RF11:** Página `/review/:id` é a annotation tool para revisão humana de spec (Layer 2)
+  - ✓ spec renderizada como HTML (marked.js), seleção de texto + comentário + salvar
+  - ✓ anotações persistem no SQLite com line_start, line_end, selected_text, comment, status
+  - ✓ re-abrir com anotações existentes (highlights visíveis, resolved atenuados)
+  - ✓ edição/exclusão de comentários, filtro por status, dark mode
+  - ✗ spec file não existe → erro com path
+  - ✗ browser não abre automaticamente → mostra URL no terminal (acessível via Tailscale/port forward/IP remoto)
+
+- **RF12:** Layer 1 (gate determinístico) roda 6 checks automaticamente na spec via CLI (`atomic-flow validate-spec`)
+  - ✓ C1 Critérios por requisito: todo RF tem ≥1 ✓ e ≥1 ✗? Todo RN tem ≥1 ✓? (ex: RF03 sem ✗ → FAIL)
+  - ✓ C2 Linguagem vaga: weak words em critérios ✓/✗? (should, might, typically, usually, appropriate, fast, easy, etc. → FAIL em critério, WARN em requisito)
+  - ✓ C3 Implementation-free: código ou verbos de implementação em RF/RN/EC? (ex: `fetchData()` → FAIL, "implement" → FAIL, "Redis" → WARN humano decide)
+  - ✓ C4 Completude estrutural: 7 seções obrigatórias? (Objetivo, RF, RN, EC, Arquivos, Test Contracts, Fora de Escopo)
+  - ✓ C5 Test contracts: todo RF/RN tem ≥1 TC? TC sem linguagem de framework? (ex: RF05 sem TC → FAIL, TC com "mock" → FAIL)
+  - ✓ C6 Marcadores pendentes: [TBD], [TODO], [?], [DECIDIR] → FAIL
+  - ✗ ≥1 FAIL → spec volta para revisão, não avança
+
+- **RF13:** Layer 3 (review AI-guiada) roda 8 dimensões adversariais na spec, em 2 passos (extração → julgamento)
+  - ✓ D1 Consistência interna: RFs se contradizem? (ex: RF01 "validar inputs" vs RF05 "aceitar raw")
+  - ✓ D2 Completude: cenários implícitos ausentes? (ex: login sem "conta inexistente")
+  - ✓ D3 Qualidade dos critérios: ✓/✗ são testáveis? (ex: "funciona bem" → CRITICAL)
+  - ✓ D4 Atomicidade: RF com múltiplos comportamentos? (ex: "valida, salva, e envia email" = 3 RFs)
+  - ✓ D5 Rastreabilidade: entidade mencionada sem definição cross-seção? (ex: "permissão de admin" sem RN)
+  - ✓ D6 Ambiguidade contextual: pronomes, condições incompletas? (ex: "seus dados" — quais?)
+  - ✓ D7 Assumptions surfacing: premissas implícitas? (ex: assume single-tenant sem declarar)
+  - ✓ D8 Qualidade dos TCs: tautologia, cobertura de partições, boundary? (ex: 3 TCs business, 0 error)
+  - ✓ findings salvos na seção Validation da spec.md com severidade (CRITICAL/HIGH/MEDIUM/LOW)
+  - ✓ anti-overcorrection: cap 10 findings, evidência obrigatória, mínimo 3 findings
+  - ✗ CRITICAL encontrado → bloqueia G1, volta para Layer 2
+  - ✗ AI gera 0 findings → FAIL (rubber-stamping, anti-sycophancy violado)
+
+### Decompose & Tasks
+
+- **RF14:** Contracts-first como primeiro step do decompose — interfaces/DTOs commitados antes de tasks
+  - ✓ contracts gerados da spec validada → commitados no source tree
+  - ✓ registrados no SQLite (tabela tasks com type=contract)
+  - ✗ contract sem interface pública → WARN
+
+- **RF15:** Tasks são arquivos individuais (~40-80 linhas) com contexto self-contained
+  - ✓ cada task em `.ai/features/NNN/tasks/T1-name.md` com YAML frontmatter (id, files, deps, status)
+  - ✓ index.md gerado do SQLite (tabela compacta de status)
+  - ✗ task sem Test Contracts → FAIL no Layer 1 da task
+
+### Implement & Learning
+
+- **RF16:** SessionStart hook injeta estado da feature ativa do SQLite no contexto do Claude
+  - ✓ sessão nova com feature ativa → mostra: phase, task atual, gates, 3 rules da fase
+  - ✓ rules mudam por fase (research=read-only, implement=test-first, review=no-new-features)
+  - ✗ nenhuma feature ativa → mensagem informativa, sem erro
+
+- **RF17:** PreToolUse hook enforça file scoping em 3 tiers lendo do SQLite
+  - ✓ arquivo na task atual → permitido
+  - ✓ arquivo na spec da feature mas não nesta task → WARNING com mensagem
+  - ✗ arquivo fora da feature → HARD BLOCK (exit 2)
+
+- **RF18:** Learning loop após cada task: AAR micro-retro → revise pending tasks
+  - ✓ após task done → append learnings ao SQLite (decisions, interface changes, constraints, patterns)
+  - ✓ scan de pending tasks com deps na task concluída → sugerir revisões
+  - ✓ revisões mecânicas (paths, signatures) → auto-update task file
+  - ✗ revisões de julgamento (escopo, arch) → flag HUMAN-GATE, não aplica automaticamente
+
+- **RF19:** Recovery em 4 níveis progressivos quando task falha
+  - ✓ R1 Retry com contexto: reescrever prompt com mais contexto (stacktrace, arquivo, padrão existente) — 1ª falha, geralmente falta de contexto
+  - ✓ R2 Rollback ao checkpoint: `git checkout .` → re-prompt com abordagem diferente — 2ª falha, abordagem errada
+  - ✓ R3 Subagent de investigação: spawnar subagent focado no problema, voltar com diagnóstico — problema sistêmico ou área desconhecida
+  - ✗ R4 Escalar ao humano: 3 strikes → task status=failed no SQLite, documentar o que tentou e falhou, humano decide
+
+### Review & Ship
+
+- **RF20:** Convergence rule no review — CRITICAL+HIGH deve diminuir a cada round
+  - ✓ round 1: 3 CRITICAL → round 2: 1 CRITICAL → convergindo
+  - ✗ round 2: 4 CRITICAL (aumentou) → rollback, re-prompt do zero
+  - ✗ 3 rounds sem convergência → aceitar com ressalvas ou rollback feature
+
+- **RF21:** Reconcile verifica integridade feature vs filesystem antes de ship
+  - ✓ todos gates approved + todas tasks done + spec_hash match + zero orphans → OK
+  - ✗ spec_hash mismatch → DRIFT (spec mudou após decompose)
+  - ✗ arquivo declarado em task não existe no repo → DRIFT
+  - ✗ arquivo no git diff não declarado em nenhuma task → ORPHAN
+
+### Utilitários
+
+- **RF22:** `atomic-flow status` lê do SQLite e exporta tracking.md atualizado
+  - ✓ mostra: feature, phase, gates, tasks (status table), learnings count
+  - ✓ exporta tracking.md para `.ai/features/NNN/tracking.md` (git-trackable)
+  - ✗ SQLite ausente → regenera do tracking.md existente
+
+---
 
 ## Regras de Negócio
 
-- **RN01:** Skills usam template vars (`{{BASH_TOOL}}`, `{{READ_TOOL}}`, etc.) — nunca hardcode de tool names
-  - ✓ skill renderizada para Claude Code substitui `{{BASH_TOOL}}` por `Bash`
-  - ✗ skill contém nome de tool hardcoded → falha no teste
+- **RN01:** Skills usam template vars (`{{BASH_TOOL}}`, `{{READ_TOOL}}`, etc.) — nunca hardcode
+  - ✓ skill renderizada substitui todas template vars para a IDE alvo
+  - ✗ skill contém nome de tool hardcoded → falha no teste de estrutura
 
-- **RN02:** Cada skill segue a estrutura: Iron Law, HARD-GATE, Process, Red Flags, Rationalization table
-  - ✓ skill tem todas as 5 seções obrigatórias
-  - ✗ skill sem Iron Law ou HARD-GATE → falha no teste de estrutura
+- **RN02:** Cada skill segue a estrutura com 5 seções obrigatórias
+  - ✓ S1 Iron Law: regra inviolável no topo (ex: "NO FIX WITHOUT ROOT CAUSE")
+  - ✓ S2 HARD-GATE: paradas obrigatórias antes de ações perigosas (ex: "Se prestes a criar código sem teste: STOP")
+  - ✓ S3 Process: passos do processo com instruções concretas
+  - ✓ S4 Red Flags: pensamentos que indicam atalho (ex: "Já sei, vou direto ao código")
+  - ✓ S5 Rationalization table: mapeamento tentação → por que falha
+  - ✗ skill sem qualquer dessas seções → falha no teste de estrutura
 
-- **RN03:** Tracking file é lido do filesystem, nunca gerado da memória do LLM
-  - ✓ af-status skill instrui a AI a ler `.ai/tracking/{feature}.md` com Read tool
-  - ✗ skill pede para AI "reportar status" sem apontar para arquivo → violação
+- **RN03:** Status é LIDO do SQLite, nunca gerado da memória do LLM
+  - ✓ skill `atomic-flow:status` instrui AI a ler via CLI/Read, não inventar
+  - ✗ status gerado sem consultar SQLite/arquivo → violação da regra fundamental
 
-- **RN04:** Gates (G1, G2, G3) requerem aprovação humana explícita — AI não auto-aprova
-  - ✓ af-gate skill bloqueia avanço até humano declarar "aprovado"
-  - ✗ AI tenta avançar sem aprovação humana → skill contém HARD-GATE que impede avanço
+- **RN04:** Spec contém WHAT/WHY, nunca HOW — enforçado pelo Layer 1
+  - ✓ RF/RN com apenas comportamento esperado → passa
+  - ✗ RF com `fetchData()` ou `implement` → FAIL automático
 
-- **RN05:** Reinstalação usa conflict detection 3-hash (installed vs current vs new)
-  - ✓ arquivo não modificado localmente → sobrescreve silenciosamente
-  - ✓ arquivo modificado localmente, package não mudou → mantém local
-  - ✗ ambos mudaram → pergunta ao usuário (overwrite/keep/diff)
+- **RN05:** SQLite é source of truth para STATE; markdown é source of truth para CONTENT
+  - ✓ phase, gates, task status, annotations → SQLite
+  - ✓ spec text, task descriptions, learnings narrative → markdown files
+  - ✗ conflito entre SQLite e markdown → SQLite prevalece para state, markdown para content
 
-- **RN06:** Annotation tool salva anotações como JSON sidecar (`{spec}.annotations.json`)
-  - ✓ anotação contém: id, line_start, line_end, selected_text, comment, status
-  - ✗ anotação sem selected_text → inválida
+- **RN06:** Learning loop cap: max 3 ciclos com revisões por feature, max 5 min por ciclo
+  - ✓ 2 ciclos consecutivos com 0 revisões → skip futuras revisões
+  - ✗ 4º ciclo com revisões → parar, problema é a decomposição
 
-- **RN07:** Spec que contém HOW (verbos de implementação, código, nomes de tecnologia) falha no Layer 1 do gate determinístico
-  - ✓ spec com apenas WHAT/WHY → passa
-  - ✗ spec com `fetchData()` em RF → FAIL
+- **RN07:** Annotation tool persiste no SQLite, não em JSON sidecar
+  - ✓ anotação com id, line_start, line_end, selected_text, comment, status (open/resolved)
+  - ✗ seleção vazia → anotação não criada
+
+---
 
 ## Edge Cases
 
-- **EC01:** Projeto com `.ai/tracking/` de outro tool (ex: Kiro)
-  - ✓ detecta presença, avisa, e não sobrescreve
+- **EC01:** SQLite corrompido ou ausente
+  - ✓ regenera do tracking.md + task files existentes (markdown → SQLite hydration)
 
-- **EC02:** settings.json com JSON inválido
-  - ✓ reporta erro, não corrompe o arquivo
+- **EC02:** Duas sessions Claude simultâneas na mesma feature
+  - ✓ SQLite WAL mode permite leituras concorrentes, write serializado
 
-- **EC03:** Install interrompido pelo usuário (Ctrl+C)
-  - ✓ cleanup de arquivos parcialmente escritos, nenhum artefato órfão
+- **EC03:** Install interrompido por Ctrl+C
+  - ✓ cleanup de arquivos parciais, DB em estado consistente (ACID)
 
-- **EC04:** Annotation tool — browser não abre automaticamente
-  - ✓ mostra URL no terminal para o usuário abrir manualmente
+- **EC04:** Feature com 10+ tasks (acima do recomendado)
+  - ✓ WARN sugerindo split em 2 features, não bloqueia
 
-- **EC05:** Annotation tool — spec com caracteres especiais (emoji, unicode)
-  - ✓ renderiza corretamente, line numbers se mantêm consistentes
+- **EC05:** Spec muda após decompose (drift)
+  - ✓ spec_hash no SQLite detecta automaticamente, flag DRIFT no reconcile
+
+- **EC06:** Annotation tool — spec com emoji, unicode, tabelas complexas
+  - ✓ renderiza corretamente, line numbers consistentes
+
+- **EC07:** Projeto já usa `.ai/` para outro tool
+  - ✓ detecta, avisa, pergunta se deve coexistir em subdiretório
+
+- **EC08:** Ambiente remoto (SSH, container)
+  - ✓ `atomic-flow ui` mostra URL no terminal → acessível via Tailscale/port forward/IP remoto
+  - ✓ server escuta em `0.0.0.0` (não só localhost) para acesso via rede
+
+---
 
 ## Arquivos Envolvidos
 
-- `package.json` — novo — npm package definition
-- `bin/cli.js` — novo — CLI entry point (install/uninstall/review)
-- `src/install.js` — novo — lógica de instalação
-- `src/uninstall.js` — novo — lógica de remoção
-- `src/render.js` — novo (copiado de atomic-skills) — template rendering engine
-- `src/config.js` — novo (copiado de atomic-skills) — IDE registry
-- `src/hash.js` — novo (copiado de atomic-skills) — SHA-256 utility
-- `src/manifest.js` — novo — persistência de manifest
-- `src/yaml.js` — novo (copiado de atomic-skills) — YAML parser
-- `src/prompts.js` — novo — CLI prompts via inquirer
-- `src/review-server.js` — novo — annotation tool HTTP server
-- `src/review-ui/index.html` — novo — annotation tool frontend
-- `src/review-ui/style.css` — novo — annotation tool styles
-- `src/review-ui/app.js` — novo — annotation tool logic
-- `skills/en/af1-research.md` a `af7-ship.md` — novo — 7 skills de fase
-- `skills/en/af-status.md` — novo — skill utilitária
-- `skills/en/af-gate.md` — novo — skill utilitária
-- `templates/tracking.md` — novo — template do tracking file
-- `templates/spec.md` — novo — template da spec
-- `templates/hooks.json` — novo — hooks de SessionStart
-- `meta/skills.yaml` — novo — catálogo de skills
+- `package.json` — novo — npm package definition (dep: sql.js, inquirer)
+- `bin/cli.js` — novo — CLI entry point (install/uninstall/new/ui/status/gate)
+- `src/install.js` — novo — implementation — lógica de instalação
+- `src/uninstall.js` — novo — implementation — lógica de remoção
+- `src/db.js` — novo — implementation — SQLite schema, migrations, queries
+- `src/enforcement.js` — novo — implementation — triggers, valid_transitions, gate checks
+- `src/render.js` — novo — implementation — template rendering (de atomic-skills)
+- `src/config.js` — novo — implementation — IDE registry (só claude-code MVP)
+- `src/hash.js` — novo — implementation — SHA-256 utility
+- `src/manifest.js` — novo — implementation — persistência de manifest
+- `src/yaml.js` — novo — implementation — YAML parser
+- `src/prompts.js` — novo — implementation — CLI prompts via inquirer
+- `src/ui-server.js` — novo — implementation — Local UI HTTP server (dashboard + review)
+- `src/ui/dashboard.html` — novo — implementation — overview de todas features
+- `src/ui/feature.html` — novo — implementation — detalhe de uma feature
+- `src/ui/review.html` — novo — implementation — annotation tool
+- `src/ui/shared.css` — novo — implementation — estilos compartilhados (funcional, não polished)
+- `src/ui/shared.js` — novo — implementation — lógica compartilhada (SQLite queries, rendering)
+- `src/export.js` — novo — implementation — SQLite → markdown export
+- `src/hydrate.js` — novo — implementation — markdown → SQLite hydration
+- `skills/en/1-research.md` — novo — implementation — `atomic-flow:1-research`
+- `skills/en/2-spec.md` — novo — implementation — `atomic-flow:2-spec`
+- `skills/en/3-spec-validate.md` — novo — implementation — `atomic-flow:3-spec-validate`
+- `skills/en/4-decompose.md` — novo — implementation — `atomic-flow:4-decompose`
+- `skills/en/5-implement.md` — novo — implementation — `atomic-flow:5-implement`
+- `skills/en/6-review.md` — novo — implementation — `atomic-flow:6-review`
+- `skills/en/7-ship.md` — novo — implementation — `atomic-flow:7-ship`
+- `skills/en/status.md` — novo — implementation — `atomic-flow:status`
+- `skills/en/gate.md` — novo — implementation — `atomic-flow:gate`
+- `templates/tracking.md` — novo — implementation — template de tracking export
+- `templates/spec.md` — novo — implementation — template de spec
+- `templates/task.md` — novo — implementation — template de task file
+- `templates/hooks.json` — novo — implementation — hooks de SessionStart + PreToolUse
+- `meta/skills.yaml` — novo — implementation — catálogo de skills
+- `meta/schema.sql` — novo — contract — schema SQLite com triggers
 
 ## Decisões Tomadas
 
-- **Self-contained:** Copiar ~155 linhas de infra do atomic-skills em vez de npm dep. Razão: nenhum conteúdo compartilhado, 155 linhas não justifica dep. Análise completa: `reference/atomic-flow-dependency-analysis.md`
-- **Só Claude Code no MVP:** Menor superfície de teste. Multi-IDE no v1.1.
-- **Só EN no MVP:** Foco na qualidade do conteúdo. PT quando skills estabilizarem.
-- **7 fases (não 6):** Fase ③ VALIDATE adicionada. Pesquisa: spec review dedicado reduz rework de 30-50% → <15% (FORGE).
-- **Annotation tool no MVP:** Experiência de Layer 2 é crítica. Sem tool, revisão humana é lossy.
-- **Formato spec machine-parseable:** ✓/✗ inline + Test Contracts. Permite gate determinístico.
+- **Self-contained:** Copiar ~155 linhas de infra do atomic-skills. Razão: zero conteúdo compartilhado.
+- **SQLite (sql.js WASM):** Enforcement no nível do dado via triggers. Markdown sozinho não enforça. Zero compilação nativa.
+- **Só Claude Code MVP:** Menor superfície de teste. Multi-IDE v1.1.
+- **Só EN MVP:** Foco na qualidade do conteúdo.
+- **7 fases (não 6):** Fase ③ SPEC VALIDATE adicionada. FORGE: rework 30-50% → <15%.
+- **Annotation tool no MVP:** Layer 2 é crítico. SQLite-backed.
+- **Individual task files (40-80 linhas):** TDAD Paper: 20 linhas > 107 linhas (4x resolução). BMAD #2003: títulos = código superficial.
+- **Namespace colon:** `atomic-flow:1-research` (convenção do ecossistema).
+- **Learning loop:** AAR micro-retro + revise pending tasks. Stanford MemoryArena valida.
+- **File scoping 3-tier:** task=allow, feature=warn, outside=block.
+- **Contracts-first no decompose:** Spec é pure WHAT (sem code). Contracts derivam da spec validada.
+- **Hybrid SQLite+Markdown:** SQLite=state enforcement, Markdown=content+git. Padrão Beads (18.7K stars).
 
 ## Alternativas Rejeitadas
 
-- **Depender de atomic-skills como npm dep:** Coupling desnecessário para 155 linhas de infra
-- **7 IDEs no MVP:** Custo zero de código, mas aumenta superfície de teste
-- **Annotation via markdown comments (`<!-- REVIEW: -->`):** Polui o arquivo da spec
-- **6 fases (sem VALIDATE):** Contradiz regra 70/30 e evidência de FORGE/Superpowers
+- **Depender de atomic-skills:** Coupling para 155 linhas de infra.
+- **Markdown-only tracking:** Sem enforcement de dados. AI pode editar frontmatter livremente.
+- **better-sqlite3:** Compilação nativa falha em Windows sem build tools, Node não-LTS.
+- **Application-level enforcement (sem SQLite):** Sem ACID, sem cross-feature queries, sem triggers.
+- **7 IDEs no MVP:** Aumenta superfície de teste.
+- **Phase subdirectories:** 0 de 6 tools usa. Fases = frontmatter, não dirs.
+- **Tasks em single file:** Após /clear, AI precisa de contexto self-contained por task.
+- **Prefix `af1-` ou `atomic-flow-1-`:** Não segue convenção de colon namespace.
+- **Contracts na fase spec:** Hook bloquearia código. Contracts derivam da spec validada.
+- **JSON sidecar para annotations:** SQLite já existe, integração natural.
 
 ## Test Contracts
 
 ### RF01: Install
-- **TC-RF01-1** [business]: {projeto limpo, node >= 18} → {9 skills em .claude/skills/, .ai/tracking/ criado, hooks merged, manifest criado}
-- **TC-RF01-2** [error]: {node < 18} → {stderr contém "Node.js >= 18 required", exit code 1}
-- **TC-RF01-3** [edge]: {projeto já tem atomic-flow instalado} → {3-hash conflict detection, pergunta overwrite/keep}
+- **TC-RF01-1** [business]: {projeto limpo, node >= 18} → {9 skills, SQLite inicializado com schema, hooks merged, .ai/features/ criado}
+- **TC-RF01-2** [error]: {node < 18} → {stderr: "Node.js >= 18 required", exit 1}
+- **TC-RF01-3** [edge]: {projeto já tem atomic-flow} → {3-hash conflict detection, prompt overwrite/keep}
 
-### RF02: Skill installation
-- **TC-RF02-1** [business]: {install com IDE claude-code} → {cada skill existe em .claude/skills/{name}/SKILL.md com frontmatter válido}
-- **TC-RF02-2** [boundary]: {skill com {{BASH_TOOL}} template var} → {renderizada como "Bash" no output}
+### RF02: Skill rendering
+- **TC-RF02-1** [business]: {skill com {{BASH_TOOL}}} → {output: "Bash", sem "{{BASH_TOOL}}"}
+- **TC-RF02-2** [boundary]: {skill com {{#if ide.gemini}}} → {bloco removido para claude-code}
 
-### RF03: Tracking directory
-- **TC-RF03-1** [business]: {projeto sem .ai/tracking/} → {diretório criado}
-- **TC-RF03-2** [edge]: {.ai/tracking/ já existe com features} → {não sobrescreve, conteúdo preservado}
+### RF05: New feature
+- **TC-RF05-1** [business]: {atomic-flow new "user-login"} → {.ai/features/001-user-login/ criado com tracking.md + spec.md template}
+- **TC-RF05-2** [boundary]: {3ª feature criada} → {ID = 003}
+- **TC-RF05-3** [error]: {nome "user login!@#"} → {erro + sugestão "user-login"}
 
-### RF04: Hooks merge
-- **TC-RF04-1** [business]: {settings.json sem hooks} → {SessionStart hook adicionado}
-- **TC-RF04-2** [edge]: {settings.json com hooks existentes} → {hooks do atomic-flow adicionados ao array, hooks do usuário preservados}
-- **TC-RF04-3** [error]: {settings.json com JSON inválido} → {erro reportado, arquivo não corrompido}
+### RF06: Phase transitions
+- **TC-RF06-1** [business]: {phase=spec, G1=approved, transition to decompose} → {SQLite updated, phase=decompose}
+- **TC-RF06-2** [error]: {phase=spec, transition to implement} → {RAISE(ABORT): "Invalid phase transition"}
+- **TC-RF06-3** [error]: {phase=decompose, G2=pending, transition to implement} → {RAISE(ABORT): "Gate G2 not approved"}
+- **TC-RF06-4** [boundary]: {phase=review, transition to implement} → {aceito (rework loop válido)}
 
-### RF05: Uninstall
-- **TC-RF05-1** [business]: {atomic-flow instalado} → {skills removidas, hooks removidos, manifest removido}
-- **TC-RF05-2** [edge]: {tracking dir com features em progresso} → {aviso, dir não removido}
+### RF07: Gates
+- **TC-RF07-1** [business]: {atomic-flow gate approve G1} → {SQLite: gates.status = approved}
+- **TC-RF07-2** [error]: {gate reject G2} → {SQLite: status=rejected, phase volta a anterior}
+- **TC-RF07-3** [edge]: {AI edita tracking.md para "G1: approved"} → {SQLite não reflete, transição bloqueada}
 
-### RF06: Manifest
-- **TC-RF06-1** [business]: {após install} → {manifest.json contém lista de files com installed_hash}
-- **TC-RF06-2** [boundary]: {reinstall, arquivo modificado localmente} → {conflict detection: installed_hash ≠ current_hash ≠ new_hash → prompt}
+### RF07b: Preflight checks
+- **TC-RF07b-1** [business]: {preflight G2, task T4 com 5 arquivos} → {flag: "T4 tem 5 arquivos, SPLIT recomendado"}
+- **TC-RF07b-2** [business]: {preflight G2, T3 e T5 editam User.php} → {flag: "COLISÃO: T3 e T5 compartilham User.php"}
+- **TC-RF07b-3** [business]: {preflight G2, contrato com refund() vs RF03 "não-reembolsável"} → {flag: "CONFLICT: refund() contradiz RF03"}
+- **TC-RF07b-4** [business]: {preflight G2, zero problemas} → {0 flags, approve habilitado}
+- **TC-RF07b-5** [edge]: {preflight G2, dependência cíclica T2→T3→T5→T2} → {flag: "CICLO de dependência"}
+- **TC-RF07b-6** [boundary]: {approve G2 com flags pendentes} → {warning "3 flags unresolved", approve permitido mas registrado}
 
-### RF07: Annotation tool
-- **TC-RF07-1** [business]: {spec.md existe} → {browser abre, Markdown renderizado como HTML, seleção + comentário funciona, JSON salvo}
-- **TC-RF07-2** [error]: {spec.md não existe} → {stderr com path, exit code 1}
-- **TC-RF07-3** [edge]: {porta default em uso} → {tenta próxima porta, abre com sucesso}
-- **TC-RF07-4** [boundary]: {spec com 500+ linhas, emoji, tabelas} → {renderiza corretamente, line numbers consistentes}
+### RF08: Local UI server
+- **TC-RF08-1** [business]: {atomic-flow ui} → {browser abre localhost, /dashboard carrega, SQLite conectado}
+- **TC-RF08-2** [edge]: {porta 3000 em uso} → {tenta 3001, abre com sucesso}
+- **TC-RF08-3** [error]: {SQLite ausente} → {erro: "Run atomic-flow install first"}
 
-### RN01: Template vars
-- **TC-RN01-1** [business]: {skill com {{BASH_TOOL}}} → {output contém "Bash", não contém "{{BASH_TOOL}}"}
-- **TC-RN01-2** [error]: {skill com hardcoded "Bash tool"} → {falha no teste de estrutura}
+### RF09: Dashboard
+- **TC-RF09-1** [business]: {2 features ativas} → {/dashboard lista 2 features com fase, progresso, gates}
+- **TC-RF09-2** [business]: {feature com 3/5 tasks done} → {barra de progresso mostra 60%}
+- **TC-RF09-3** [edge]: {zero features} → {mensagem "Crie com atomic-flow new"}
+- **TC-RF09-4** [boundary]: {feature com drift detectado} → {indicador visual de DRIFT}
 
-### RN02: Skill structure
-- **TC-RN02-1** [business]: {skill af1-research.md} → {contém seções: Iron Law, HARD-GATE, Red Flags, Rationalization table}
-- **TC-RN02-2** [error]: {skill sem seção Iron Law} → {teste de estrutura falha com "Missing required section: Iron Law"}
-- **TC-RN02-3** [boundary]: {skill com HARD-GATE mas sem conteúdo dentro do bloco} → {teste falha com "Empty HARD-GATE section"}
+### RF10: Feature detail
+- **TC-RF10-1** [business]: {/feature/001} → {diagrama de fases, tasks table, gates, learnings}
+- **TC-RF10-2** [business]: {link para /review/001} → {navega para annotation tool}
+- **TC-RF10-3** [error]: {/feature/999} → {404 com lista de features válidas}
 
-### RN03: Tracking file lido, nunca gerado
-- **TC-RN03-1** [business]: {af-status skill executada com .ai/tracking/feature.md existindo} → {output contém dados lidos do arquivo, não inventados}
-- **TC-RN03-2** [error]: {af-status skill executada sem tracking file} → {skill instrui: "Nenhum tracking file encontrado em .ai/tracking/"}
-- **TC-RN03-3** [edge]: {skill text contém instrução de ler com Read tool} → {grep no .md encontra "Read" ou "{{READ_TOOL}}", não encontra "report from memory"}
+### RF11: Annotation tool (review)
+- **TC-RF11-1** [business]: {/review/001} → {spec renderizada, seleção + comentário funciona}
+- **TC-RF11-2** [business]: {salvar anotação} → {SQLite: annotations row com line_start, selected_text, comment, status=open}
+- **TC-RF11-3** [edge]: {reabrir com anotações existentes} → {highlights visíveis, resolved atenuados}
+- **TC-RF11-4** [boundary]: {spec 500+ linhas com emoji} → {renderiza corretamente}
+- **TC-RF11-5** [edge]: {acesso remoto via Tailscale/port forward} → {UI completa funciona via IP remoto, anotações salvam no SQLite normalmente}
 
-### RN04: Gates requerem aprovação humana
-- **TC-RN04-1** [business]: {af-gate skill executada, humano diz "aprovado"} → {gate status atualizado para approved no tracking file}
-- **TC-RN04-2** [error]: {af-gate skill executada, humano diz "rejeitado"} → {gate status atualizado para rejected, skill indica próximo passo (voltar à fase anterior)}
-- **TC-RN04-3** [edge]: {skill text contém bloqueio explícito} → {grep no .md encontra "STOP" ou "HARD-GATE" antes de auto-aprovação}
+### RF12: Layer 1 validation
+- **TC-RF09-1** [business]: {spec completa, sem violações} → {6/6 checks PASS}
+- **TC-RF09-2** [error]: {RF sem ✓/✗} → {FAIL: "RF03 não tem critério de aceitação"}
+- **TC-RF09-3** [error]: {weak word "should" em critério} → {FAIL: "Critério deve ser determinístico"}
+- **TC-RF09-4** [error]: {`fetchData()` em RF} → {FAIL: "Código não pertence à spec"}
 
-### RN05: 3-hash conflict
-- **TC-RN05-1** [business]: {installed_hash == current_hash, new_hash diferente} → {sobrescreve silenciosamente}
-- **TC-RN05-2** [business]: {installed_hash ≠ current_hash, installed_hash == new_hash} → {mantém local}
-- **TC-RN05-3** [boundary]: {todos os 3 hashes diferentes} → {prompt: overwrite/keep/diff}
+### RF16: SessionStart hook
+- **TC-RF16-1** [business]: {sessão nova, feature 001 ativa, phase=implement, T3 in_progress} → {output contém: phase, task atual, gates, 3 rules de implement}
+- **TC-RF16-2** [edge]: {nenhuma feature ativa} → {mensagem informativa}
+- **TC-RF16-3** [boundary]: {spec_hash drift detectado} → {output contém WARNING DRIFT}
 
-### RN06: Annotation JSON sidecar
-- **TC-RN06-1** [business]: {humano seleciona trecho e salva comentário} → {JSON contém: id, line_start, line_end, selected_text, comment, status:"open"}
-- **TC-RN06-2** [error]: {seleção vazia (sem texto selecionado)} → {botão de comentário desabilitado, anotação não criada}
-- **TC-RN06-3** [edge]: {re-abrir spec com anotações existentes} → {anotações carregadas do JSON, trechos highlighted, status preservado}
-- **TC-RN06-4** [boundary]: {marcar anotação como resolved} → {status muda para "resolved", highlight visual muda (atenuado)}
+### RF17: File scoping
+- **TC-RF17-1** [business]: {Write em arquivo declarado na task} → {permitido, exit 0}
+- **TC-RF17-2** [business]: {Write em arquivo da feature mas não da task} → {WARNING mostrado, permitido}
+- **TC-RF17-3** [error]: {Write em arquivo fora da feature} → {exit 2, BLOCKED}
 
-### RN07: Spec implementation-free
-- **TC-RN07-1** [business]: {spec com apenas WHAT/WHY em RF/RN/EC} → {Layer 1 check 3 retorna PASS}
-- **TC-RN07-2** [error]: {spec com `fetchData()` dentro de RF} → {Layer 1 retorna FAIL com "Código não pertence à spec" + linha}
-- **TC-RN07-3** [error]: {spec com "implement" dentro de RN} → {Layer 1 retorna FAIL com "Verbo de implementação" + linha}
-- **TC-RN07-4** [edge]: {spec com "REST" dentro de RF} → {Layer 1 retorna WARN, humano decide}
+### RF18: Learning loop
+- **TC-RF18-1** [business]: {task T2 done} → {learnings row no SQLite com decisions, constraints}
+- **TC-RF18-2** [business]: {T3 depende de T2, T2 mudou interface} → {T3.md auto-updated com nova interface}
+- **TC-RF18-3** [edge]: {revisão de escopo para T4} → {flag HUMAN-GATE, não auto-aplica}
+- **TC-RF18-4** [boundary]: {2 ciclos com 0 revisões} → {skip futuras revisões}
+
+### RF21: Reconcile
+- **TC-RF21-1** [business]: {todos gates OK, todas tasks done, spec_hash match} → {reconcile: OK}
+- **TC-RF21-2** [error]: {spec mudou após decompose} → {reconcile: DRIFT + spec_hash mismatch}
+- **TC-RF21-3** [error]: {arquivo no git diff não declarado em task} → {reconcile: ORPHAN}
+
+### RF22: Status + export
+- **TC-RF22-1** [business]: {atomic-flow status} → {output: feature, phase, gates, tasks table}
+- **TC-RF22-2** [business]: {após status} → {tracking.md exportado em .ai/features/NNN/}
+- **TC-RF22-3** [edge]: {SQLite ausente} → {regenera do tracking.md existente}
+
+### RN03: Status determinístico
+- **TC-RN03-1** [business]: {skill instrui "leia com Read tool"} → {grep no .md encontra Read/{{READ_TOOL}}}
+- **TC-RN03-2** [error]: {skill diz "reporte status"} → {grep encontra "report from memory" → FAIL}
+
+### RN05: SQLite=state, Markdown=content
+- **TC-RN05-1** [business]: {phase transition via CLI} → {SQLite updated + tracking.md re-exported}
+- **TC-RN05-2** [edge]: {edição manual de spec.md} → {conteúdo markdown prevalece, SQLite atualiza spec_hash}
+
+### RN06: Learning loop cap
+- **TC-RN06-1** [boundary]: {3º ciclo com revisões} → {revisões aplicadas}
+- **TC-RN06-2** [boundary]: {4º ciclo} → {STOP: "Problema é a decomposição, não a execução"}
 
 ## Fora de Escopo
 
 - Multi-IDE (Cursor, Gemini, Codex, OpenCode, Copilot) — v1.1
 - Português (skills em pt/) — v1.1
-- Dashboard visual de tracking
 - Integração com CI/CD
 - Dual-model review (Claude + Codex/Gemini) no Layer 3
-- Geração automática de spec (isso é a skill af2-spec fazendo, não o package)
+- Geração automática de spec (skill `atomic-flow:2-spec` faz, não o package)
+- Cross-feature dependency management (features são independentes no MVP)
+- Vector search / embeddings sobre learnings
+- TUI interativo para review em terminal puro (sem browser) — v1.1
+- Multi-user collaboration (single developer no MVP)
