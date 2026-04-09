@@ -117,10 +117,20 @@ O projeto tem 3 camadas: método (skills que ensinam), enforcer (MCP server + SQ
 
 - **RF07:** 7 gates humanos (G1-G7) em todas as transições forward — NUNCA automáticos
   - ✓ humano executa `atomic-flow gate approve G{N}` → gate atualizado no SQLite, transição habilitada
+  - ✓ gate approve executa commit automático ANTES de registrar aprovação — artefatos da fase são commitados com mensagem descritiva (ex: "gate(G2): spec + decisions approved")
+  - ✓ commit inclui todos artefatos produzidos na fase que está sendo aprovada:
+    - G1: `docs/research/{NNN-slug}/`, `docs/features/NNN/research-index.md`
+    - G2: `docs/features/NNN/spec.md`, `docs/features/NNN/decisions.md`
+    - G3: `docs/features/NNN/spec.md` (correções da validação)
+    - G4: `.ai/features/NNN/tasks/`, source tree (contracts)
+    - G5: source tree (implementação), `.ai/features/NNN/tracking.md`
+    - G6: source tree (fixes do review)
+    - G7: reconcile (merge commit é o próprio commit do ship)
   - ✓ transições backward NÃO têm gate — decisão humana de voltar já é o gate
   - ✓ em gates com documentação para validar (G1: research, G2: spec, G3: spec validada, G4: tasks), skill abre mdprobe automaticamente para o humano revisar antes de aprovar
   - ✗ AI tenta aprovar gate → SQLite não reflete, transição bloqueada
   - ✗ gate rejeitado → transição NÃO ocorre, fase fica na atual, motivo registrado no SQLite
+  - ✗ gate approve com arquivos unstaged relevantes → WARN: "N arquivos não commitados", commit executa mesmo assim (captura tudo)
 
   **G1 (RESEARCH → SPEC):** Compilação do research salva em arquivo estruturado, consultável pela AI com poucos tokens
   **G2 (SPEC → VALIDATE):** Spec escrita e completa, pronta para validação formal
@@ -600,8 +610,11 @@ O projeto tem 3 camadas: método (skills que ensinam), enforcer (MCP server + SQ
 - **TC-RF07-1** [business]: {atomic-flow gate approve G3} → {SQLite: gates.G3.status = approved}
 - **TC-RF07-2** [error]: {gate reject G4} → {SQLite: status=rejected, fase fica na atual (decompose)}
 - **TC-RF07-3** [edge]: {AI edita tracking.md para "G3: approved"} → {SQLite não reflete, transição bloqueada}
-- **TC-RF07-4** [business]: {gate approve G1} → {research→spec habilitado}
+- **TC-RF07-4** [business]: {gate approve G1} → {commit automático com research files + research-index, research→spec habilitado}
 - **TC-RF07-5** [business]: {gate approve G7} → {ship→done, feature concluída}
+- **TC-RF07-6** [business]: {gate approve G2, spec.md + decisions.md modified} → {commit "gate(G2): spec + decisions approved" ANTES de SQLite update}
+- **TC-RF07-7** [business]: {gate approve G3, spec.md com correções de validação} → {commit "gate(G3): spec validated" com spec corrigida}
+- **TC-RF07-8** [edge]: {gate approve G5, arquivos unstaged no worktree} → {WARN "N arquivos não commitados", commit inclui tudo}
 
 ### RF07b: Preflight checks
 - **TC-RF07b-1** [business]: {preflight G4, task T4 com 5 arquivos} → {flag: "T4 tem 5 arquivos, SPLIT recomendado"}
@@ -786,4 +799,4 @@ O projeto tem 3 camadas: método (skills que ensinam), enforcer (MCP server + SQ
 
 ---
 
-**Design decisions journal:** [`docs/specs/decisions.md`](decisions.md) — 27 problemas descobertos durante o design desta spec, com soluções e rationale.
+**Design decisions journal:** [`docs/specs/decisions.md`](decisions.md) — 28 problemas descobertos durante o design desta spec, com soluções e rationale.

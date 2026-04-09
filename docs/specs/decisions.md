@@ -143,3 +143,8 @@ type: project
 **Problema:** Spec cobria criação (RF05) e lifecycle completo (7 fases), mas não havia como cancelar uma feature mid-flight. RF03 (uninstall) remove o sistema inteiro. User que quer abandonar feature 001 não tinha opção.
 **Solução:** RF05d: MCP `cancel_feature(id, reason)` com motivo obrigatório. Fluxo: marca cancelled no SQLite + registra em decisions.md + ExitWorktree + deleta branch + deleta .ai/features/NNN/. docs/features/NNN/ e docs/research/ preservados. Dashboard mostra feature com badge "cancelled".
 **How to apply:** Adicionar cancel_feature à lista de MCP tools (RF04b). Implementar estado `cancelled` no schema SQLite. Dashboard (RF09) precisa de visual distinto para cancelled vs done.
+
+## P28: Artefatos não tinham commit formalizado — risco de perda em crash de sessão
+**Problema:** Commits estavam definidos apenas para IMPLEMENT (micro-commit) e DECOMPOSE (contracts). Research, spec, validação, tasks, review — nenhum tinha commit obrigatório. Sessão de validação inteira quase ficou sem commit — só foi salva por pedido manual do humano.
+**Solução:** Gate approve executa commit automático ANTES de registrar aprovação no SQLite. Cada gate commita os artefatos da fase sendo aprovada. Mensagem descritiva: "gate(G{N}): {descrição}". G7 é o merge commit (já era implícito).
+**How to apply:** RF07 atualizado com commit automático por gate e lista de artefatos por gate (G1-G7). MCP `gate_approve` deve executar `git add` + `git commit` antes de atualizar SQLite.
