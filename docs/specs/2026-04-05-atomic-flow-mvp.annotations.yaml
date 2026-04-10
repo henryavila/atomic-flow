@@ -1,0 +1,213 @@
+version: 1
+source: 2026-04-05-atomic-flow-mvp.md
+source_hash: sha256:679253fd33d6aa9a7832706d2d2a66e857a98a6c8e63873394ed538866498b2c
+sections:
+  - heading: 'Spec: Atomic Flow MVP'
+    level: 1
+    status: pending
+  - heading: Objetivo
+    level: 2
+    status: pending
+  - heading: Requisitos Funcionais
+    level: 2
+    status: pending
+  - heading: Distribuição
+    level: 3
+    status: approved
+  - heading: Feature Lifecycle
+    level: 3
+    status: approved
+  - heading: Spec & Validation
+    level: 3
+    status: approved
+  - heading: Decompose & Tasks
+    level: 3
+    status: approved
+  - heading: Implement & Learning
+    level: 3
+    status: pending
+  - heading: Review & Ship
+    level: 3
+    status: pending
+  - heading: Utilitários
+    level: 3
+    status: pending
+  - heading: Regras de Negócio
+    level: 2
+    status: pending
+  - heading: Edge Cases
+    level: 2
+    status: pending
+  - heading: Arquivos Envolvidos
+    level: 2
+    status: approved
+  - heading: Decisões Tomadas
+    level: 2
+    status: approved
+  - heading: Alternativas Rejeitadas
+    level: 2
+    status: approved
+  - heading: Test Contracts
+    level: 2
+    status: approved
+  - heading: 'RF01: Install'
+    level: 3
+    status: approved
+  - heading: 'RF02: Skill rendering'
+    level: 3
+    status: approved
+  - heading: 'RF03: Uninstall'
+    level: 3
+    status: approved
+  - heading: 'RF04: Manifest'
+    level: 3
+    status: approved
+  - heading: 'RF04b: MCP Server'
+    level: 3
+    status: approved
+  - heading: 'RF04c: Dual activation'
+    level: 3
+    status: approved
+  - heading: 'RF04d: Worktree transparente'
+    level: 3
+    status: approved
+  - heading: 'RF05: New feature'
+    level: 3
+    status: approved
+  - heading: 'RF05b: Research output'
+    level: 3
+    status: approved
+  - heading: 'RF05c: Decision journal'
+    level: 3
+    status: approved
+  - heading: 'RF06: Phase transitions'
+    level: 3
+    status: approved
+  - heading: 'RF07: Gates'
+    level: 3
+    status: approved
+  - heading: 'RF07b: Preflight checks'
+    level: 3
+    status: approved
+  - heading: 'RF08: Local UI server'
+    level: 3
+    status: approved
+  - heading: 'RF09: Dashboard'
+    level: 3
+    status: approved
+  - heading: 'RF10: Feature detail'
+    level: 3
+    status: approved
+  - heading: 'RF11: Annotation tool (mdprobe)'
+    level: 3
+    status: approved
+  - heading: 'RF12: Layer 1 validation'
+    level: 3
+    status: approved
+  - heading: 'RF16: SessionStart hook'
+    level: 3
+    status: approved
+  - heading: 'RF17: File scoping por fase'
+    level: 3
+    status: approved
+  - heading: 'RF18: Learning loop'
+    level: 3
+    status: approved
+  - heading: 'RF21: Reconcile'
+    level: 3
+    status: approved
+  - heading: 'RF22: Status + export'
+    level: 3
+    status: approved
+  - heading: 'RN03: Status determinístico'
+    level: 3
+    status: approved
+  - heading: 'RN05: SQLite=state, Markdown=content'
+    level: 3
+    status: approved
+  - heading: 'RN01: Template vars'
+    level: 3
+    status: approved
+  - heading: 'RN02: Skill structure'
+    level: 3
+    status: approved
+  - heading: 'RN04: WHAT/WHY not HOW'
+    level: 3
+    status: approved
+  - heading: 'RN07: mdprobe YAML persistence'
+    level: 3
+    status: approved
+  - heading: 'RN08: Protocolo AI-humano'
+    level: 3
+    status: approved
+  - heading: 'RN09: Protocolo de refinamento'
+    level: 3
+    status: approved
+  - heading: 'RN06: Learning loop cap'
+    level: 3
+    status: approved
+  - heading: Fora de Escopo
+    level: 2
+    status: pending
+annotations:
+  - id: 79b234b2
+    selectors:
+      position:
+        startLine: 7
+        startColumn: 1
+        endLine: 7
+        endColumn: 1
+      quote:
+        exact: sistema de enforcement de metodologia de desenvolvimento
+        prefix: ''
+        suffix: ''
+    comment: é um sistema de desenvolvimetno com enforcer
+    tag: bug
+    status: resolved
+    author: anonymous
+    created_at: '2026-04-08T14:11:50.528Z'
+    updated_at: '2026-04-08T20:28:36.243Z'
+    replies:
+      - author: anonymous
+        comment: Outor ponto. qual é o nome mais apropriaod? Sistem de desnvovliemtno? o qeu extmatne ese projeto é? com osuperpower se posiciona?
+        created_at: '2026-04-08T14:15:37.593Z'
+  - id: '08495697'
+    selectors:
+      position:
+        startLine: 67
+        startColumn: 1
+        endLine: 67
+        endColumn: 40
+      quote:
+        exact: Criação de feature via MCP new_feature
+        prefix: ''
+        suffix: ''
+    comment: |-
+      AS outras fases podem ser inciar vai comando, qeu tal criarmos um comando apra inciar um novo recurso?
+      ex: /atomic-flow-new-feature
+    tag: question
+    status: resolved
+    author: anonymous
+    created_at: '2026-04-08T15:30:11.802Z'
+    updated_at: '2026-04-08T20:29:58.433Z'
+    replies: []
+  - id: 2887f627
+    selectors:
+      position:
+        startLine: 109
+        startColumn: 1
+        endLine: 109
+        endColumn: 1
+      quote:
+        exact: Compilação do research salva em arquivo estruturado
+        prefix: ''
+        suffix: ''
+    comment: |-
+      Podem ser masi de uma arquivo. EM todo gate qeu tenha  documenacao, abir o docuimetno (via mdprobe) par ao suaurio valdiar. o contarot permite abrir um diretior, entao se o resaseach gerou varios arvuiso? que tal abrir a pasta?
+      MAS SE OS REEOSURS SAO SALVAOS EM UMA PASTA UNICA NAO PREOJTO, A PATA FICARÁ TUDO MISTURDAO. AO CREOT OS RECEORUS, NA OÉ MELHOR AGRUPAR EM SUBPASTAS COM A FETURES SENDO DESENVOVLDIA?
+    tag: question
+    status: resolved
+    author: anonymous
+    created_at: '2026-04-08T15:37:18.063Z'
+    updated_at: '2026-04-08T20:32:41.217Z'
+    replies: []
