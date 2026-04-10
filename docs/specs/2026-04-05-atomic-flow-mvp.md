@@ -301,14 +301,18 @@ O projeto tem 3 camadas: método (skills que ensinam), enforcer (MCP server + SQ
   - ✓ skill renderizada substitui todas template vars para a IDE alvo
   - ✗ skill contém nome de tool hardcoded → falha no teste de estrutura
 
-- **RN02:** Cada skill segue a estrutura com 5 seções obrigatórias — formatos baseados em evidência de prompt engineering
-  - ✓ S1 **Iron Law:** regra inviolável, markdown code block. Uma frase declarativa, ALL CAPS. Ex: `NO FIX WITHOUT ROOT CAUSE.` — Formato: destaque visual via code block, não XML (padrão validado em atomic-skills)
-  - ✓ S2 **HARD-GATE:** checkpoint condicional, `<HARD-GATE>` XML tag. Formato: "Se prestes a [ação] sem [pré-condição]: PARE. [Instrução corretiva]." — a ÚNICA seção que usa XML tag (Claude fine-tuned em XML — evidência forte). Posicionado no ponto exato de decisão, não como proibição genérica
-  - ✓ S3 **Process:** passos do processo, markdown numerado. Instruções concretas com framing positivo ("faça X" em vez de "não faça Y") — evidência: Pink Elephant Problem mostra que framing negativo pode induzir o comportamento indesejado
-  - ✓ S4 **Red Flags:** pensamentos-armadilha, markdown lista com quotes em primeira pessoa. Ex: `- "Já sei a resposta, não preciso pesquisar"` — funciona como few-shot negativo (modelo vê o padrão de falha antes de encontrá-lo). Suporte teórico: Reflexion framework
-  - ✓ S5 **Rationalization table:** markdown table com 2 colunas (Tentação | Por que falha). Cria lookup table contra auto-engano. Cada entrada referencia de volta o HARD-GATE ou Iron Law
-  - ✓ poucas regras focadas por skill (3-5 core) — evidência: CSDD Paper mostra 96% compliance com 3-5 regras vs 78% com constituição inteira. Saturação de constraints documentada: 150+ instruções → degradação severa
-  - ✗ skill sem qualquer dessas seções → falha no teste de estrutura
+- **RN02:** Cada skill segue anatomia em 3 camadas com 5 componentes — formatos baseados em evidência de prompt engineering
+  - ✓ **Camada CORE** (regras invioláveis, 3-5 max — CSDD Paper: 96% compliance vs 78% com constituição inteira):
+    - **Iron Law:** regra inviolável, markdown code block. Frase(s) declarativa(s) concisa(s), sentence case. Ex: `One task. Clean session. Test first. Commit often.` — Formato: destaque visual via code block, não XML (padrão validado em atomic-skills). Sentence case preferido: ALL CAPS causa overtriggering no Claude 4.6 (Anthropic)
+    - **HARD-GATE:** checkpoint condicional, `<HARD-GATE>` XML tag. Formato: "Se prestes a [ação] sem [pré-condição]: PARE. [Instrução corretiva]." — a ÚNICA seção que usa XML tag (Claude fine-tuned em XML — evidência forte). Posicionado no ponto exato de decisão, não como proibição genérica
+  - ✓ **Camada PLAYBOOK** (técnicas e processo — profundidade ilimitada, carrega no invoke da skill):
+    - **Process:** passos do processo, markdown numerado. Instruções concretas com framing positivo ("faça X" em vez de "não faça Y") — evidência: Pink Elephant Problem mostra que framing negativo pode induzir o comportamento indesejado
+    - Decision trees, templates, anti-patterns com exemplos concretos
+  - ✓ **Camada DEFENSE** (auto-detecção de falha):
+    - **Red Flags:** pensamentos-armadilha, markdown lista com quotes em primeira pessoa. Ex: `- "Já sei a resposta, não preciso pesquisar"` — funciona como few-shot negativo (modelo vê o padrão de falha antes de encontrá-lo). Suporte teórico: Reflexion framework
+    - **Rationalization table:** markdown table com 2 colunas (Tentação | Por que falha). Cria lookup table contra auto-engano. Cada entrada referencia de volta o HARD-GATE ou Iron Law
+  - ✓ Saturação de constraints documentada: 150+ instruções → degradação severa. Limit 3-5 regras no CORE; PLAYBOOK e DEFENSE não competem com esse budget (carregam em momento separado)
+  - ✗ skill sem qualquer dos 5 componentes (Iron Law, HARD-GATE, Process, Red Flags, Rationalization) → falha no teste de estrutura
   - ✗ HARD-GATE fora de XML tag → perde benefício de fine-tuning XML do Claude
   - ✗ Red Flags em terceira pessoa ("o desenvolvedor pode...") → primeira pessoa é mais eficaz (match com perspectiva de geração do modelo)
 
@@ -738,7 +742,7 @@ O projeto tem 3 camadas: método (skills que ensinam), enforcer (MCP server + SQ
 - **TC-RN01-2** [error]: {skill source com {{INVALID_VAR}}} → {FAIL: "Template var não reconhecida: {{INVALID_VAR}}", skill NÃO instalada}
 
 ### RN02: Skill structure
-- **TC-RN02-1** [business]: {skill instalada} → {contém 5 seções: Iron Law (code block), HARD-GATE (XML tag), Process, Red Flags (1ª pessoa), Rationalization table}
+- **TC-RN02-1** [business]: {skill instalada} → {contém 3 camadas (CORE/PLAYBOOK/DEFENSE) com 5 componentes: Iron Law (code block, sentence case), HARD-GATE (XML tag), Process, Red Flags (1ª pessoa), Rationalization table}
 - **TC-RN02-2** [error]: {skill com HARD-GATE fora de XML tag} → {FAIL no teste de estrutura}
 - **TC-RN02-3** [error]: {skill com Red Flags em 3ª pessoa ("o dev pode...")} → {FAIL: deve ser 1ª pessoa ("Já sei a resposta...")}
 - **TC-RN02-4** [boundary]: {skill com 6+ regras core} → {WARN: "CSDD: 3-5 regras = 96% compliance, muitas = 78%"}

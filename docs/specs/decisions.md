@@ -109,17 +109,20 @@ type: project
 **Contexto:** Descobertos empiricamente — o user enforçou HARD GATEs manuais durante a entrevista, e a qualidade da entrevista foi drasticamente superior. Aplicam-se a Fase ② (criação e refinamento) e Fase ③ (Layer 2).
 **How to apply:** RN08 encoded em todas as skills. RN09 encoded em skill `2-spec` (modo refinamento) e `3-validate` (Layer 2). Também adicionar ao METHOD-NATIVE.md como verdades universais.
 
-## P23: Formato das 5 seções de skills — baseado em evidência de prompt engineering
-**Problema:** Os termos "HARD GATE", "Iron Law", "Red Flags" eram usados inconsistentemente. Proposta inicial de wrapping tudo em XML tags não tinha base.
-**Solução:** Pesquisa profunda revelou o que funciona e o que não:
-- Iron Law: markdown code block (destaque visual, não XML) — padrão validado em atomic-skills
-- HARD-GATE: `<HARD-GATE>` XML tag — ÚNICA seção em XML (Claude fine-tuned em XML, evidência forte). Formato condicional: "Se prestes a [ação] sem [condição]: PARE"
-- Process: markdown numerado, framing positivo ("faça X" não "não faça X") — Pink Elephant Problem
-- Red Flags: lista em primeira pessoa ("Já sei a resposta...") — few-shot negativo, Reflexion framework
-- Rationalization table: markdown 2 colunas (Tentação | Por que falha) — pré-inoculação
-- Max 3-5 regras core por skill — CSDD Paper: 96% compliance vs 78% com muitas regras
-- ALL CAPS: Anthropic recomenda REDUZIR para Claude 4.6 (causa overtriggering)
-**How to apply:** RN02 atualizado com formato preciso de cada seção. Skills criadas durante implementação DEVEM seguir esses formatos. Referência para o implementador.
+## P23: Anatomia em 3 camadas das skills — baseado em evidência de prompt engineering
+**Problema:** Os termos "HARD GATE", "Iron Law", "Red Flags" eram usados inconsistentemente. Proposta inicial de wrapping tudo em XML tags não tinha base. Formato flat de 5 seções (S1-S5) não capturava a estratégia de context loading.
+**Solução:** Pesquisa profunda revelou o que funciona e o que não. Organização evoluiu de 5 seções flat para 3 camadas semânticas — mesmos 5 componentes, agrupados por quando carregam:
+- **CORE** (regras invioláveis, carrega resumido no SessionStart):
+  - Iron Law: markdown code block, sentence case (ALL CAPS causa overtriggering no Claude 4.6 — Anthropic). Padrão validado em atomic-skills
+  - HARD-GATE: `<HARD-GATE>` XML tag — ÚNICA seção em XML (Claude fine-tuned). Formato condicional: "Se prestes a [ação] sem [condição]: PARE"
+  - Max 3-5 regras core por skill — CSDD Paper: 96% compliance vs 78% com muitas regras
+- **PLAYBOOK** (técnicas e processo, carrega no invoke da skill):
+  - Process: markdown numerado, framing positivo ("faça X" não "não faça X") — Pink Elephant Problem
+  - Decision trees, templates, anti-patterns
+- **DEFENSE** (auto-detecção de falha, carrega no invoke da skill):
+  - Red Flags: lista em primeira pessoa ("Já sei a resposta...") — few-shot negativo, Reflexion framework
+  - Rationalization table: markdown 2 colunas (Tentação | Por que falha) — pré-inoculação
+**How to apply:** RN02 atualizado com anatomia em 3 camadas. Skills DEVEM conter todos os 5 componentes (Iron Law, HARD-GATE, Process, Red Flags, Rationalization) organizados nas 3 camadas. Referência para o implementador.
 
 ## P24: Output estruturado do método precisa de padrão visual consistente
 **Problema:** Skills do atomic-flow apresentam informação estruturada ao usuário em múltiplas fases (findings de validação, resultados de preflight, análise de review, status). Sem padrão visual, cada skill formata de forma diferente — o usuário não consegue escanear rapidamente e a experiência degrada.

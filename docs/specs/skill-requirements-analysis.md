@@ -127,9 +127,9 @@ Rodar 3-layer validation na spec. Gate G1.
 3. FAIL → reporta ao humano, não avança
 
 **Layer 2 (humano):**
-4. Abre annotation tool (`atomic-flow ui` → `/review/NNN`)
-5. Humano lê, anota, salva
-6. AI lê anotações do SQLite, apresenta UMA POR VEZ
+4. Abre mdprobe para review (`atomic-flow ui` → `/review/NNN` ou `mdprobe --once spec.md`)
+5. Humano lê, anota (YAML sidecar persistente), salva
+6. AI lê anotações do YAML via `AnnotationFile.load()`, apresenta UMA POR VEZ
 7. Discute, ajusta spec, marca como resolved
 8. Humano declara "Layer 2 aprovado"
 
@@ -147,7 +147,7 @@ Rodar 3-layer validation na spec. Gate G1.
 |---|---|---|
 | Layer 1 roda ANTES de Layer 2 | **SQLITE:** phase_substep = L1→L2→L3 (transition enforced) | AI pula Layer 1 (RISK: spec com problemas estruturais) |
 | Layer 1 é determinístico (script, não AI) | **CLI:** `atomic-flow validate-spec NNN` roda os 6 checks | AI simula o check (RISK: false PASS) |
-| Layer 2 usa annotation tool (não texto) | **SKILL:** instrução explícita para abrir `atomic-flow ui` | AI faz perguntas guiadas em vez de esperar humano (RISK: Layer 2 vira Layer 3) |
+| Layer 2 usa mdprobe (não texto) | **SKILL:** instrução explícita para abrir mdprobe via `atomic-flow ui` ou `mdprobe --once` | AI faz perguntas guiadas em vez de esperar humano (RISK: Layer 2 vira Layer 3) |
 | Layer 2 um ponto por vez | **SKILL:** HARD-GATE | AI agrupa pontos (RISK: decisões contaminadas) |
 | Layer 3 adversarial | **SKILL:** anti-sycophancy (mín 3 findings) | AI aprova tudo (RISK: rubber-stamping) |
 | Layer 3 cap 10 findings | **SKILL:** regra explícita | AI gera 50 findings (RISK: overcorrection, noise) |
@@ -155,7 +155,7 @@ Rodar 3-layer validation na spec. Gate G1.
 
 ### Hard Gates
 - `<HARD-GATE>` Layer 1 DEVE rodar via CLI (`atomic-flow validate-spec`), não simulado pela AI.
-- `<HARD-GATE>` Layer 2 DEVE usar annotation tool. Se humano não tem browser, cair para formato L{n}: comentário.
+- `<HARD-GATE>` Layer 2 DEVE usar mdprobe (`@henryavila/mdprobe`). Se humano não tem browser, cair para formato L{n}: comentário.
 - `<HARD-GATE>` G1 DEVE ser aprovado via CLI. Edição manual do tracking.md NÃO aprova o gate.
 
 ### Red Flags
@@ -198,7 +198,7 @@ Gerar contracts-first, depois decompor em tasks atômicas.
 6. Cada task: 2-3 arquivos max, 5-15 min, testável isoladamente
 7. Humano revisa e ajusta (HUMANO DECOMPÕE)
 8. Gera task files individuais (`tasks/T1-name.md`, 40-80 linhas)
-9. Gera index.md do SQLite
+9. Status compacto de tasks exportado em tracking.md (RF22) — sem index.md separado
 
 **Gate G2:**
 10. Humano aprova tasks → `atomic-flow gate approve G2`
@@ -234,7 +234,6 @@ Gerar contracts-first, depois decompor em tasks atômicas.
 ### Outputs
 - Source tree: contract files commitados
 - `.ai/features/NNN/tasks/T1-name.md` por task
-- `.ai/features/NNN/tasks/index.md` gerado do SQLite
 - SQLite: tasks registradas com deps, files, status=pending
 - Tracking.md exportado com G2 status
 
