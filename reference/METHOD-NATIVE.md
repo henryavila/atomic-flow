@@ -478,7 +478,38 @@ NÃO implemente lógica — apenas a estrutura tipada.
 
 **Por que:** Quando múltiplas tarefas são implementadas separadamente, contratos commitados garantem que todas as partes se encaixam. Elimina o problema #1 de multi-task: decisões de interface inconsistentes. *(FORGE: rework <15% com "constitution" files vs 30-50% sem)*
 
-**Critério de saída:** Spec escrita, salva no repo, e você concorda com todos os pontos. Se algo está vago, refine ANTES de prosseguir.
+**Decision Journal (obrigatório):**
+
+Durante a entrevista de spec, problemas e decisões surgem naturalmente. Registre CADA UM em `decisions.md` ao lado da spec:
+
+```markdown
+## P1: [título do problema]
+**Problema:** [o que foi descoberto]
+**Solução:** [o que foi decidido]
+**How to apply:** [como essa decisão afeta a implementação]
+```
+
+O decision journal é proporcional à feature — feature simples tem 2-3 problemas, feature complexa tem 20+. Nunca é overhead porque registra o que já aconteceu naturalmente na entrevista.
+
+**Por quê:** A seção "Decisões Tomadas" da spec registra O QUE foi decidido. O decision journal registra POR QUÊ — a jornada do problema à solução. Quando um implementador questiona uma decisão, o journal mostra o raciocínio completo. Sem journal, decisões parecem arbitrárias e são revertidas por falta de contexto.
+
+**Protocolo de Interação AI-Humano:**
+
+Regras universais (aplicam a TODAS as fases):
+- AI SEMPRE explicita a fase/etapa atual (ex: "Fase ② SPEC — criação"). Nunca assume que o humano lembra o contexto.
+- AI sempre pesquisa (research files, decisions, evidência) ANTES de propor. Nunca fabrica do training data quando evidência existe no projeto.
+- AI ANTES de levantar uma questão, pesquisa se já não foi decidido (decision journal, spec, research files).
+- AI sempre recomenda COM embasamento, nunca auto-aprova. Humano SEMPRE decide.
+- Discussões são UM item por vez. Nunca agrupar múltiplas questões numa decisão.
+
+Regras adicionais para refinamento/revisão (quando requisitos JÁ existem):
+- Ao discutir um requisito, TRANSCREVER ele inteiro. Humano precisa de contexto completo para decidir.
+- Cobrir TODOS os RF/RN/EC sequencialmente. NUNCA pular, mesmo se parecer trivial — gaps vêm dos triviais.
+- Quando uma dúvida é resolvida por ANÁLISE (sem perguntar ao humano), ESCREVER a dúvida E a análise que a resolveu. Não aguardar validação — o humano lê e intervém se a compreensão estiver errada. AI que resolve dúvidas silenciosamente impede o humano de validar.
+
+**Por quê:** Descoberto empiricamente — a qualidade da spec é drasticamente superior quando esses protocolos são seguidos. Sem eles, a AI pula para partes "interessantes", dá respostas rasas, e assume aprovação.
+
+**Critério de saída:** Spec escrita, salva no repo, decision journal atualizado, e você concorda com todos os pontos. Se algo está vago, refine ANTES de prosseguir.
 
 **⚠️ GATE (G1):** Não avance sem spec aprovada. A pesquisa mostra que esse é o fator #1 de sucesso.
 
