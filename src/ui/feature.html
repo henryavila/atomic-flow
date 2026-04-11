@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feature Detail — Atomic Flow</title>
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    /* Page-specific: back link */
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--slate-400);
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: color var(--transition-fast);
+    }
+    .back-link:hover {
+      color: var(--slate-200);
+    }
+    .back-link svg {
+      width: 1rem;
+      height: 1rem;
+    }
+
+    /* Page-specific: hero pipeline wrapper */
+    .hero-pipeline {
+      background-color: var(--surface-800);
+      border: 1px solid rgba(30, 41, 59, 0.5);
+      border-radius: var(--radius-xl);
+      padding: 2rem 2.5rem;
+      overflow-x: auto;
+    }
+
+    /* Page-specific: page title area */
+    .page-title {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .page-title__icon {
+      color: var(--accent-400);
+      font-size: 1.5rem;
+    }
+    .page-title__id {
+      font-family: var(--font-mono);
+      font-size: 0.875rem;
+      color: var(--slate-500);
+    }
+    .page-title__name {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    /* Page-specific: error state */
+    .error-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 50vh;
+      gap: 1.5rem;
+      text-align: center;
+    }
+    .error-state__code {
+      font-size: 4rem;
+      font-weight: 700;
+      color: var(--slate-700);
+      font-family: var(--font-mono);
+    }
+    .error-state__message {
+      font-size: 1.125rem;
+      color: var(--slate-400);
+    }
+
+    /* Page-specific: tab content container */
+    .tab-content {
+      display: none;
+    }
+    .tab-content--active {
+      display: block;
+    }
+
+    /* Page-specific: empty placeholder */
+    .placeholder {
+      background-color: var(--surface-800);
+      border: 1px solid rgba(30, 41, 59, 0.5);
+      border-radius: var(--radius-xl);
+      padding: 3rem 2rem;
+      text-align: center;
+      color: var(--slate-500);
+      font-size: 0.875rem;
+    }
+    .placeholder__icon {
+      font-size: 2rem;
+      margin-bottom: 0.75rem;
+      opacity: 0.5;
+    }
+    .placeholder__count {
+      font-family: var(--font-mono);
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--slate-300);
+      margin-bottom: 0.5rem;
+    }
+
+    /* Page-specific: sidebar actions */
+    .sidebar__actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .sidebar__actions .btn-primary,
+    .sidebar__actions .btn-secondary {
+      width: 100%;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    /* Page-specific: cancel reason banner */
+    .cancel-banner {
+      background-color: rgba(239, 68, 68, 0.08);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      border-radius: var(--radius-lg);
+      padding: 0.75rem 1rem;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.625rem;
+      font-size: 0.875rem;
+      color: var(--red-400);
+    }
+    .cancel-banner__label {
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .cancel-banner__reason {
+      color: var(--slate-300);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="container">
+      <a href="/dashboard" class="back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5"/>
+          <path d="M12 19l-7-7 7-7"/>
+        </svg>
+        Dashboard
+      </a>
+      <div id="header-title" class="page-title" style="display:none;">
+        <span class="page-title__icon">&#9889;</span>
+        <span id="header-id" class="page-title__id"></span>
+        <span id="header-name" class="page-title__name"></span>
+      </div>
+      <div style="width:80px;"></div>
+    </div>
+  </header>
+
+  <!-- Main content (populated by JS) -->
+  <main class="container" id="main-content">
+    <!-- Loading state -->
+    <div id="loading" class="error-state" style="min-height:40vh;">
+      <div class="error-state__message">Loading feature...</div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <span>Atomic Flow</span>
+      <span id="footer-timestamp"></span>
+    </div>
+  </footer>
+
+  <script src="shared.js"></script>
+  <script>
+    // -----------------------------------------------------------------------
+    // Initialization
+    // -----------------------------------------------------------------------
+    document.addEventListener('DOMContentLoaded', init);
+
+    async function init() {
+      var pathParts = window.location.pathname.split('/');
+      var id = parseInt(pathParts[pathParts.length - 1]);
+      if (isNaN(id)) return showError('Invalid feature ID');
+
+      try {
+        var data = await fetchFeature(id);
+        render(data);
+      } catch (e) {
+        showError('Feature not found');
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // Error State
+    // -----------------------------------------------------------------------
+    function showError(message) {
+      var main = document.getElementById('main-content');
+      // Safe: message is escaped, static HTML structure
+      main.textContent = '';
+      var wrapper = document.createElement('div');
+      wrapper.className = 'error-state';
+
+      var code = document.createElement('div');
+      code.className = 'error-state__code';
+      code.textContent = '404';
+      wrapper.appendChild(code);
+
+      var msg = document.createElement('div');
+      msg.className = 'error-state__message';
+      msg.textContent = message;
+      wrapper.appendChild(msg);
+
+      var link = document.createElement('a');
+      link.href = '/dashboard';
+      link.className = 'btn-primary';
+      link.style.marginTop = '0.5rem';
+      link.textContent = 'Back to Dashboard';
+      wrapper.appendChild(link);
+
+      main.appendChild(wrapper);
+    }
+
+    // -----------------------------------------------------------------------
+    // Main Render
+    // -----------------------------------------------------------------------
+    function render(data) {
+      var feature = data.feature;
+      var gates = data.gates || [];
+      var tasks = data.tasks || [];
+      var learningsCount = data.learnings_count || 0;
+
+      // Update page title
+      document.title = '#' + feature.id + ' ' + (feature.slug || feature.name) + ' \u2014 Atomic Flow';
+
+      // Update header via safe DOM methods
+      var headerTitle = document.getElementById('header-title');
+      headerTitle.style.display = 'flex';
+      document.getElementById('header-id').textContent = '#' + feature.id;
+      document.getElementById('header-name').textContent = feature.slug || feature.name;
+
+      // Update footer
+      document.getElementById('footer-timestamp').textContent = 'Loaded ' + formatDate(new Date().toISOString());
+
+      // Build main content using DOM construction
+      var main = document.getElementById('main-content');
+      main.textContent = '';
+
+      // Cancel reason banner (if cancelled)
+      if (feature.cancel_reason) {
+        var banner = document.createElement('div');
+        banner.className = 'cancel-banner mb-6';
+        var bannerLabel = document.createElement('span');
+        bannerLabel.className = 'cancel-banner__label';
+        bannerLabel.textContent = 'Cancelled:';
+        banner.appendChild(bannerLabel);
+        var bannerReason = document.createElement('span');
+        bannerReason.className = 'cancel-banner__reason';
+        bannerReason.textContent = feature.cancel_reason;
+        banner.appendChild(bannerReason);
+        main.appendChild(banner);
+      }
+
+      // Hero: Pipeline (uses shared.js renderPipeline which returns trusted HTML)
+      var heroPipeline = document.createElement('div');
+      heroPipeline.className = 'hero-pipeline mb-6';
+      heroPipeline.innerHTML = renderPipeline(feature, gates);
+      main.appendChild(heroPipeline);
+
+      // Grid: Content + Sidebar
+      var grid = document.createElement('div');
+      grid.className = 'grid-content-sidebar';
+
+      // --- Main Content Column ---
+      var contentCol = document.createElement('div');
+
+      // Tabs navigation
+      var tabs = document.createElement('div');
+      tabs.className = 'tabs mb-4';
+      var tabsNav = document.createElement('div');
+      tabsNav.className = 'tabs__nav';
+      var tabNames = ['tasks', 'gates', 'learnings', 'preflight'];
+      var tabLabels = ['Tasks', 'Gates', 'Learnings', 'Preflight'];
+      tabNames.forEach(function(name, i) {
+        var btn = document.createElement('button');
+        btn.className = 'tabs__btn tab-btn ' + (i === 0 ? 'tab-active' : 'tab-inactive');
+        btn.dataset.tab = name;
+        btn.textContent = tabLabels[i];
+        btn.addEventListener('click', function() { switchTab(name); });
+        tabsNav.appendChild(btn);
+      });
+      tabs.appendChild(tabsNav);
+      contentCol.appendChild(tabs);
+
+      // Tab: Tasks (uses shared.js renderTaskTable which returns trusted HTML)
+      var tabTasks = document.createElement('div');
+      tabTasks.id = 'tab-tasks';
+      tabTasks.className = 'tab-content tab-content--active';
+      tabTasks.innerHTML = renderTaskTable(tasks);
+      contentCol.appendChild(tabTasks);
+
+      // Tab: Gates (uses shared.js renderGatesTable which returns trusted HTML)
+      var tabGates = document.createElement('div');
+      tabGates.id = 'tab-gates';
+      tabGates.className = 'tab-content';
+      tabGates.innerHTML = renderGatesTable(gates);
+      contentCol.appendChild(tabGates);
+
+      // Tab: Learnings
+      var tabLearnings = document.createElement('div');
+      tabLearnings.id = 'tab-learnings';
+      tabLearnings.className = 'tab-content';
+      var learningsPlaceholder = document.createElement('div');
+      learningsPlaceholder.className = 'placeholder';
+      if (learningsCount > 0) {
+        var countEl = document.createElement('div');
+        countEl.className = 'placeholder__count';
+        countEl.textContent = learningsCount;
+        learningsPlaceholder.appendChild(countEl);
+        var countLabel = document.createElement('div');
+        countLabel.textContent = 'learning' + (learningsCount !== 1 ? 's' : '') + ' recorded for this feature';
+        learningsPlaceholder.appendChild(countLabel);
+      } else {
+        var iconEl = document.createElement('div');
+        iconEl.className = 'placeholder__icon';
+        iconEl.textContent = '\uD83D\uDCDA';
+        learningsPlaceholder.appendChild(iconEl);
+        var emptyLabel = document.createElement('div');
+        emptyLabel.textContent = 'No learnings recorded yet';
+        learningsPlaceholder.appendChild(emptyLabel);
+      }
+      tabLearnings.appendChild(learningsPlaceholder);
+      contentCol.appendChild(tabLearnings);
+
+      // Tab: Preflight
+      var tabPreflight = document.createElement('div');
+      tabPreflight.id = 'tab-preflight';
+      tabPreflight.className = 'tab-content';
+      var preflightPlaceholder = document.createElement('div');
+      preflightPlaceholder.className = 'placeholder';
+      var preflightIcon = document.createElement('div');
+      preflightIcon.className = 'placeholder__icon';
+      preflightIcon.textContent = '\u2705';
+      preflightPlaceholder.appendChild(preflightIcon);
+      var preflightLabel = document.createElement('div');
+      preflightLabel.textContent = 'Run preflight to check gate readiness';
+      preflightPlaceholder.appendChild(preflightLabel);
+      tabPreflight.appendChild(preflightPlaceholder);
+      contentCol.appendChild(tabPreflight);
+
+      grid.appendChild(contentCol);
+
+      // --- Sidebar Column ---
+      var sidebarCol = document.createElement('div');
+      sidebarCol.className = 'sidebar';
+
+      // Feature Info Panel
+      sidebarCol.appendChild(buildInfoPanel(feature));
+
+      // Gates Summary Panel
+      sidebarCol.appendChild(buildGatesSummary(gates));
+
+      // Actions Panel
+      sidebarCol.appendChild(buildActionsPanel());
+
+      grid.appendChild(sidebarCol);
+      main.appendChild(grid);
+    }
+
+    // -----------------------------------------------------------------------
+    // Sidebar: Feature Info Panel
+    // -----------------------------------------------------------------------
+    function buildInfoPanel(feature) {
+      var panel = document.createElement('div');
+      panel.className = 'sidebar__panel';
+
+      var title = document.createElement('div');
+      title.className = 'sidebar__title';
+      title.textContent = 'Feature Info';
+      panel.appendChild(title);
+
+      // ID
+      appendRow(panel, 'ID', '#' + feature.id, 'sidebar__value');
+
+      // Branch
+      var branchVal = feature.branch || '\u2014';
+      appendRow(panel, 'Branch', branchVal, 'sidebar__value mono text-sm');
+
+      // Phase
+      var phaseRow = document.createElement('div');
+      phaseRow.className = 'sidebar__row';
+      var phaseLabel = document.createElement('span');
+      phaseLabel.className = 'sidebar__label';
+      phaseLabel.textContent = 'Phase';
+      phaseRow.appendChild(phaseLabel);
+      var phaseBadge = document.createElement('span');
+      phaseBadge.className = 'badge ' + getBadgeClass(feature.phase === 'done' ? 'done' : 'in_progress');
+      phaseBadge.textContent = PHASE_LABELS[feature.phase] || feature.phase || '\u2014';
+      phaseRow.appendChild(phaseBadge);
+      panel.appendChild(phaseRow);
+
+      // Status
+      var statusRow = document.createElement('div');
+      statusRow.className = 'sidebar__row';
+      var statusLabel = document.createElement('span');
+      statusLabel.className = 'sidebar__label';
+      statusLabel.textContent = 'Status';
+      statusRow.appendChild(statusLabel);
+      var statusBadge = document.createElement('span');
+      var status = feature.status || 'pending';
+      statusBadge.className = 'badge ' + getBadgeClass(status);
+      statusBadge.textContent = status.replace('_', ' ');
+      statusRow.appendChild(statusBadge);
+      panel.appendChild(statusRow);
+
+      // Spec Hash (truncated)
+      if (feature.spec_hash) {
+        appendRow(panel, 'Spec Hash', feature.spec_hash.slice(0, 12), 'sidebar__value mono text-xs');
+      }
+
+      // Created
+      appendRow(panel, 'Created', formatDate(feature.created_at), 'sidebar__value text-xs');
+
+      // Updated
+      appendRow(panel, 'Updated', formatDate(feature.updated_at), 'sidebar__value text-xs');
+
+      return panel;
+    }
+
+    function appendRow(parent, labelText, valueText, valueClass) {
+      var row = document.createElement('div');
+      row.className = 'sidebar__row';
+      var label = document.createElement('span');
+      label.className = 'sidebar__label';
+      label.textContent = labelText;
+      row.appendChild(label);
+      var value = document.createElement('span');
+      value.className = valueClass || 'sidebar__value';
+      value.textContent = valueText;
+      row.appendChild(value);
+      parent.appendChild(row);
+    }
+
+    // -----------------------------------------------------------------------
+    // Sidebar: Gates Summary Panel
+    // -----------------------------------------------------------------------
+    function buildGatesSummary(gates) {
+      var panel = document.createElement('div');
+      panel.className = 'sidebar__panel';
+
+      var title = document.createElement('div');
+      title.className = 'sidebar__title';
+      title.textContent = 'Gates';
+      panel.appendChild(title);
+
+      var list = document.createElement('div');
+      list.className = 'gates-list';
+
+      // Build gate status lookup
+      var gateStatusMap = {};
+      gates.forEach(function(g) {
+        gateStatusMap[g.gate] = g.status;
+      });
+
+      GATE_LABELS.forEach(function(gateKey) {
+        var gs = gateStatusMap[gateKey] || 'pending';
+        var diamondState = (gs === 'approved' || gs === 'done') ? 'done' : (gs === 'rejected' ? 'rejected' : 'pending');
+
+        var item = document.createElement('div');
+        item.className = 'gates-list__item';
+
+        var left = document.createElement('div');
+        left.className = 'gates-list__left';
+        var diamond = document.createElement('div');
+        diamond.className = 'gates-list__diamond gates-list__diamond--' + diamondState;
+        left.appendChild(diamond);
+        var gateLabel = document.createElement('span');
+        gateLabel.className = 'text-sm';
+        gateLabel.style.color = 'var(--slate-300)';
+        gateLabel.textContent = gateKey;
+        left.appendChild(gateLabel);
+        item.appendChild(left);
+
+        var right = document.createElement('div');
+        right.className = 'gates-list__right';
+        var badge = document.createElement('span');
+        var badgeText = (gs === 'approved' || gs === 'done') ? 'approved' : (gs === 'rejected' ? 'rejected' : 'pending');
+        badge.className = 'badge ' + getBadgeClass(gs);
+        badge.textContent = badgeText;
+        right.appendChild(badge);
+        item.appendChild(right);
+
+        list.appendChild(item);
+      });
+
+      panel.appendChild(list);
+      return panel;
+    }
+
+    // -----------------------------------------------------------------------
+    // Sidebar: Actions Panel
+    // -----------------------------------------------------------------------
+    function buildActionsPanel() {
+      var panel = document.createElement('div');
+      panel.className = 'sidebar__panel';
+
+      var title = document.createElement('div');
+      title.className = 'sidebar__title';
+      title.textContent = 'Actions';
+      panel.appendChild(title);
+
+      var actions = document.createElement('div');
+      actions.className = 'sidebar__actions';
+
+      // Export Tracking button
+      var exportBtn = document.createElement('button');
+      exportBtn.className = 'btn-secondary';
+      exportBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+      var exportText = document.createTextNode(' Export Tracking');
+      exportBtn.appendChild(exportText);
+      exportBtn.addEventListener('click', exportTracking);
+      actions.appendChild(exportBtn);
+
+      // Run Preflight button
+      var preflightBtn = document.createElement('button');
+      preflightBtn.className = 'btn-primary';
+      preflightBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+      var preflightText = document.createTextNode(' Run Preflight');
+      preflightBtn.appendChild(preflightText);
+      preflightBtn.addEventListener('click', runPreflight);
+      actions.appendChild(preflightBtn);
+
+      panel.appendChild(actions);
+      return panel;
+    }
+
+    // -----------------------------------------------------------------------
+    // Tab Switching
+    // -----------------------------------------------------------------------
+    function switchTab(tabName) {
+      document.querySelectorAll('.tab-content').forEach(function(el) {
+        el.style.display = 'none';
+        el.classList.remove('tab-content--active');
+      });
+      var target = document.getElementById('tab-' + tabName);
+      if (target) {
+        target.style.display = 'block';
+        target.classList.add('tab-content--active');
+      }
+      document.querySelectorAll('.tab-btn').forEach(function(el) {
+        el.className = el.dataset.tab === tabName
+          ? 'tabs__btn tab-btn tab-active'
+          : 'tabs__btn tab-btn tab-inactive';
+      });
+    }
+
+    // -----------------------------------------------------------------------
+    // Action Stubs
+    // -----------------------------------------------------------------------
+    function exportTracking() {
+      alert('Export tracking: not yet implemented');
+    }
+
+    function runPreflight() {
+      switchTab('preflight');
+      alert('Run preflight: not yet implemented');
+    }
+  </script>
+</body>
+</html>
