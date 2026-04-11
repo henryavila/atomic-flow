@@ -1,0 +1,1077 @@
+/* ==========================================================================
+   Atomic Flow — Shared Styles
+   Dark theme stylesheet extracted from Tailwind mockups.
+   Pure CSS, no preprocessors, no Tailwind CDN.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. CSS Custom Properties
+   -------------------------------------------------------------------------- */
+:root {
+  /* Surface colors */
+  --surface-900: #020617;
+  --surface-800: #0f172a;
+  --surface-700: #1e293b;
+
+  /* Accent colors */
+  --accent-400: #38bdf8;
+  --accent-500: #0ea5e9;
+  --accent-600: #0284c7;
+
+  /* Phase status colors */
+  --phase-done: #22c55e;
+  --phase-active: #f59e0b;
+  --phase-pending: #475569;
+  --phase-gate: #a855f7;
+  --phase-failed: #ef4444;
+
+  /* Slate palette */
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1;
+  --slate-400: #94a3b8;
+  --slate-500: #64748b;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1e293b;
+
+  /* Semantic */
+  --red-400: #f87171;
+  --red-500: #ef4444;
+  --amber-400: #fbbf24;
+  --emerald-400: #34d399;
+  --purple-400: #c084fc;
+  --purple-500: #a855f7;
+
+  /* Typography */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+  /* Spacing */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+}
+
+
+/* --------------------------------------------------------------------------
+   2. Reset / Base
+   -------------------------------------------------------------------------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--surface-900);
+  color: var(--slate-200);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+img, svg {
+  display: block;
+  max-width: 100%;
+}
+
+select {
+  font: inherit;
+}
+
+
+/* --------------------------------------------------------------------------
+   3. Typography
+   -------------------------------------------------------------------------- */
+.mono {
+  font-family: var(--font-mono);
+}
+
+.text-xs { font-size: 0.75rem; line-height: 1rem; }
+.text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+.text-base { font-size: 1rem; line-height: 1.5rem; }
+.text-lg { font-size: 1.125rem; line-height: 1.75rem; }
+.text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+.text-2xl { font-size: 1.5rem; line-height: 2rem; }
+.text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
+
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+
+.uppercase { text-transform: uppercase; }
+.tracking-wider { letter-spacing: 0.05em; }
+
+
+/* --------------------------------------------------------------------------
+   4. Layout
+   -------------------------------------------------------------------------- */
+.container {
+  max-width: 80rem; /* 1280px */
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+header {
+  border-bottom: 1px solid rgba(30, 41, 59, 0.5);
+  background-color: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+header .container {
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+main {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+main.container {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+footer {
+  border-top: 1px solid var(--surface-800);
+  margin-top: 3rem;
+  padding: 1.5rem 0;
+}
+
+footer .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--slate-600);
+}
+
+
+/* --------------------------------------------------------------------------
+   5. Grid Layouts
+   -------------------------------------------------------------------------- */
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+/* Two-column content + sidebar (2/3 + 1/3) */
+.grid-content-sidebar {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .grid-content-sidebar {
+    grid-template-columns: 1fr;
+  }
+
+  .grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* --------------------------------------------------------------------------
+   6. Stats Card
+   -------------------------------------------------------------------------- */
+.stats-card {
+  background-color: var(--surface-800);
+  border: 1px solid rgba(30, 41, 59, 0.5);
+  border-radius: var(--radius-xl);
+  padding: 1.25rem;
+}
+
+.stats-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.stats-card__label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--slate-400);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stats-card__icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stats-card__icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.stats-card__value {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.2;
+}
+
+.stats-card__sub {
+  font-size: 0.75rem;
+  color: var(--slate-500);
+  margin-top: 0.25rem;
+}
+
+/* Progress bar inside stats card */
+.stats-card__progress {
+  margin-top: 0.5rem;
+  height: 0.375rem;
+  background-color: var(--surface-700);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.stats-card__progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background-color: var(--phase-done);
+  transition: width var(--transition-normal);
+}
+
+
+/* --------------------------------------------------------------------------
+   7. Feature Card
+   -------------------------------------------------------------------------- */
+.feature-card {
+  background-color: var(--surface-800);
+  border: 1px solid rgba(30, 41, 59, 0.5);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+  cursor: pointer;
+}
+
+.feature-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.feature-card__body {
+  padding: 1.5rem;
+}
+
+.feature-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.feature-card__title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.feature-card__id {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--slate-500);
+  background-color: var(--surface-800);
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+}
+
+.feature-card__name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.feature-card__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1.25rem;
+}
+
+
+/* --------------------------------------------------------------------------
+   8. Pipeline
+   -------------------------------------------------------------------------- */
+.pipeline {
+  position: relative;
+  padding: 0 0.5rem;
+}
+
+.pipeline__track {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+}
+
+/* Connecting background line */
+.pipeline__line-bg {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--surface-700);
+  transform: translateY(-50%);
+  z-index: 0;
+}
+
+/* Progress fill line */
+.pipeline__line-fill {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: 2px;
+  background-color: rgba(34, 197, 94, 0.5);
+  transform: translateY(-50%);
+  z-index: 0;
+  transition: width var(--transition-normal);
+}
+
+/* Phase circle */
+.pipeline__phase {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 4rem;
+}
+
+.pipeline__phase-circle {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  border: 2px solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  transition: border-color var(--transition-normal), background-color var(--transition-normal);
+}
+
+/* Small variant for feature card pipeline */
+.pipeline--compact .pipeline__phase-circle {
+  width: 2rem;
+  height: 2rem;
+  font-size: 0.75rem;
+  margin-bottom: 0.375rem;
+}
+
+.pipeline--compact .pipeline__phase {
+  width: auto;
+}
+
+.pipeline--compact .pipeline__phase-label {
+  font-size: 0.625rem;
+}
+
+.pipeline--compact .gate-diamond {
+  width: 1rem;
+  height: 1rem;
+}
+
+.pipeline--compact .gate-diamond__label {
+  font-size: 0.5625rem;
+}
+
+/* Phase states */
+.pipeline__phase--done .pipeline__phase-circle {
+  background-color: rgba(34, 197, 94, 0.2);
+  border-color: var(--phase-done);
+  color: var(--phase-done);
+}
+
+.pipeline__phase--active .pipeline__phase-circle {
+  background-color: rgba(245, 158, 11, 0.2);
+  border-color: var(--phase-active);
+  color: var(--phase-active);
+}
+
+.pipeline__phase--pending .pipeline__phase-circle {
+  background-color: var(--surface-800);
+  border-color: var(--slate-600);
+  color: var(--slate-500);
+}
+
+.pipeline__phase-label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+
+.pipeline__phase--done .pipeline__phase-label {
+  color: var(--phase-done);
+}
+
+.pipeline__phase--active .pipeline__phase-label {
+  color: var(--phase-active);
+  font-weight: 600;
+}
+
+.pipeline__phase--pending .pipeline__phase-label {
+  color: var(--slate-600);
+}
+
+.pipeline__phase-date {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--slate-600);
+  margin-top: 0.125rem;
+}
+
+
+/* --------------------------------------------------------------------------
+   9. Phase Line
+   -------------------------------------------------------------------------- */
+.phase-line {
+  height: 2px;
+  flex: 1;
+  min-width: 0.5rem;
+}
+
+.phase-line--done {
+  background-color: rgba(34, 197, 94, 0.5);
+}
+
+.phase-line--pending {
+  background-color: var(--surface-700);
+}
+
+
+/* --------------------------------------------------------------------------
+   10. Gate Diamond
+   -------------------------------------------------------------------------- */
+.gate-diamond {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 2rem;
+}
+
+.gate-diamond__shape {
+  width: 1.25rem;
+  height: 1.25rem;
+  transform: rotate(45deg);
+  border-width: 1.5px;
+  border-style: solid;
+  margin-bottom: 0.5rem;
+}
+
+.gate-diamond__label {
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 500;
+}
+
+/* Gate states */
+.gate-diamond--done .gate-diamond__shape {
+  background-color: rgba(34, 197, 94, 0.2);
+  border-color: var(--phase-done);
+}
+
+.gate-diamond--done .gate-diamond__label {
+  color: var(--phase-done);
+}
+
+.gate-diamond--pending .gate-diamond__shape {
+  background-color: var(--surface-800);
+  border-color: var(--slate-600);
+}
+
+.gate-diamond--pending .gate-diamond__label {
+  color: var(--slate-500);
+}
+
+.gate-diamond--rejected .gate-diamond__shape {
+  background-color: rgba(239, 68, 68, 0.2);
+  border-color: var(--phase-failed);
+}
+
+.gate-diamond--rejected .gate-diamond__label {
+  color: var(--phase-failed);
+}
+
+
+/* --------------------------------------------------------------------------
+   11. Pulse Animation
+   -------------------------------------------------------------------------- */
+.pulse {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.15);
+  }
+}
+
+
+/* --------------------------------------------------------------------------
+   12. Task Table
+   -------------------------------------------------------------------------- */
+.task-table {
+  background-color: var(--surface-800);
+  border: 1px solid rgba(30, 41, 59, 0.5);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.task-table table {
+  width: 100%;
+}
+
+.task-table thead th {
+  padding: 0.75rem 1.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--slate-400);
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid rgba(30, 41, 59, 0.5);
+}
+
+.task-table tbody td {
+  padding: 0.875rem 1.25rem;
+  font-size: 0.875rem;
+  border-bottom: 1px solid rgba(30, 41, 59, 0.3);
+  vertical-align: middle;
+}
+
+.task-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.task-table tbody tr {
+  transition: background-color var(--transition-fast);
+}
+
+.task-table tbody tr:hover {
+  background-color: rgba(30, 41, 59, 0.5);
+}
+
+/* Active task row highlight */
+.task-table tbody tr.task-row--active {
+  background-color: rgba(245, 158, 11, 0.03);
+}
+
+/* Pending task row */
+.task-table tbody tr.task-row--pending {
+  opacity: 0.6;
+}
+
+.task-table__id {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--slate-500);
+}
+
+.task-table__name {
+  color: var(--slate-200);
+  font-weight: 500;
+}
+
+.task-table__commit {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: rgba(34, 197, 94, 0.7);
+  background-color: rgba(34, 197, 94, 0.05);
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-sm);
+}
+
+.task-table__strikes {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--slate-600);
+}
+
+.task-table__strikes--warn {
+  color: var(--phase-active);
+}
+
+
+/* --------------------------------------------------------------------------
+   13. Tabs
+   -------------------------------------------------------------------------- */
+.tabs {
+  border-bottom: 1px solid rgba(30, 41, 59, 0.5);
+  margin-bottom: 1.5rem;
+}
+
+.tabs__nav {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.tabs__btn {
+  padding-bottom: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.tab-active {
+  border-bottom: 2px solid var(--accent-500);
+  color: var(--slate-100);
+}
+
+.tab-inactive {
+  border-bottom: 2px solid transparent;
+  color: var(--slate-500);
+}
+
+.tab-inactive:hover {
+  color: var(--slate-400);
+}
+
+
+/* --------------------------------------------------------------------------
+   14. Buttons
+   -------------------------------------------------------------------------- */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #fff;
+  background-color: var(--accent-600);
+  border-radius: var(--radius-lg);
+  transition: background-color var(--transition-fast);
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-500);
+}
+
+.btn-primary:active {
+  background-color: var(--accent-600);
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--slate-300);
+  background-color: transparent;
+  border: 1px solid rgba(30, 41, 59, 0.5);
+  border-radius: var(--radius-lg);
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.btn-secondary:hover {
+  color: #fff;
+  border-color: var(--slate-500);
+}
+
+
+/* --------------------------------------------------------------------------
+   15. Badge
+   -------------------------------------------------------------------------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.625rem;
+  font-weight: 500;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.badge--done {
+  color: var(--phase-done);
+  background-color: rgba(34, 197, 94, 0.1);
+}
+
+.badge--active,
+.badge--in_progress {
+  color: var(--phase-active);
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+.badge--pending {
+  color: var(--slate-500);
+  background-color: rgba(71, 85, 105, 0.2);
+}
+
+.badge--failed,
+.badge--rejected {
+  color: var(--phase-failed);
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.badge--approved {
+  color: var(--phase-done);
+  background-color: rgba(34, 197, 94, 0.1);
+}
+
+.badge--gate {
+  color: var(--phase-gate);
+  background-color: rgba(168, 85, 247, 0.1);
+}
+
+
+/* --------------------------------------------------------------------------
+   16. Sidebar
+   -------------------------------------------------------------------------- */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.sidebar__panel {
+  background-color: var(--surface-800);
+  border: 1px solid rgba(30, 41, 59, 0.5);
+  border-radius: var(--radius-xl);
+  padding: 1.25rem;
+}
+
+.sidebar__title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--slate-400);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 1rem;
+}
+
+.sidebar__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.875rem;
+}
+
+.sidebar__row + .sidebar__row {
+  margin-top: 0.75rem;
+}
+
+.sidebar__label {
+  color: var(--slate-500);
+}
+
+.sidebar__value {
+  color: var(--slate-300);
+  font-family: var(--font-mono);
+}
+
+
+/* --------------------------------------------------------------------------
+   17. Gates Table (sidebar variant)
+   -------------------------------------------------------------------------- */
+.gates-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.gates-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.875rem;
+}
+
+.gates-list__left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gates-list__diamond {
+  width: 0.875rem;
+  height: 0.875rem;
+  transform: rotate(45deg);
+  border: 1px solid;
+  flex-shrink: 0;
+}
+
+.gates-list__diamond--done {
+  background-color: rgba(34, 197, 94, 0.2);
+  border-color: var(--phase-done);
+}
+
+.gates-list__diamond--pending {
+  background-color: var(--surface-800);
+  border-color: var(--slate-600);
+}
+
+.gates-list__diamond--rejected {
+  background-color: rgba(239, 68, 68, 0.2);
+  border-color: var(--phase-failed);
+}
+
+.gates-list__right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  color: var(--slate-500);
+}
+
+
+/* --------------------------------------------------------------------------
+   18. Section Headers
+   -------------------------------------------------------------------------- */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.section-title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--slate-300);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+
+/* --------------------------------------------------------------------------
+   19. Select / Form Controls
+   -------------------------------------------------------------------------- */
+select.form-select {
+  background-color: var(--surface-800);
+  border: 1px solid rgba(30, 41, 59, 0.5);
+  border-radius: var(--radius-lg);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  color: var(--slate-300);
+  outline: none;
+}
+
+select.form-select:focus {
+  box-shadow: 0 0 0 1px var(--accent-500);
+}
+
+
+/* --------------------------------------------------------------------------
+   20. Learnings
+   -------------------------------------------------------------------------- */
+.learning-item {
+  border-left: 2px solid;
+  padding-left: 0.75rem;
+}
+
+.learning-item--decision {
+  border-color: rgba(14, 165, 233, 0.3);
+}
+
+.learning-item--constraint {
+  border-color: rgba(245, 158, 11, 0.3);
+}
+
+.learning-item--pattern {
+  border-color: rgba(168, 85, 247, 0.3);
+}
+
+.learning-item__text {
+  font-size: 0.75rem;
+  color: var(--slate-300);
+}
+
+.learning-item__meta {
+  font-size: 0.625rem;
+  color: var(--slate-600);
+  font-family: var(--font-mono);
+  margin-top: 0.125rem;
+}
+
+
+/* --------------------------------------------------------------------------
+   21. Utility Classes
+   -------------------------------------------------------------------------- */
+
+/* Display */
+.hidden { display: none; }
+.flex { display: flex; }
+.inline-flex { display: inline-flex; }
+.grid { display: grid; }
+.block { display: block; }
+
+/* Flex */
+.flex-col { flex-direction: column; }
+.flex-1 { flex: 1 1 0%; }
+.flex-shrink-0 { flex-shrink: 0; }
+.items-center { align-items: center; }
+.items-start { align-items: flex-start; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.flex-wrap { flex-wrap: wrap; }
+
+/* Gap */
+.gap-1 { gap: 0.25rem; }
+.gap-2 { gap: 0.5rem; }
+.gap-3 { gap: 0.75rem; }
+.gap-4 { gap: 1rem; }
+.gap-6 { gap: 1.5rem; }
+.gap-8 { gap: 2rem; }
+
+/* Spacing */
+.space-y-2 > * + * { margin-top: 0.5rem; }
+.space-y-3 > * + * { margin-top: 0.75rem; }
+.space-y-4 > * + * { margin-top: 1rem; }
+
+/* Margin */
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-3 { margin-bottom: 0.75rem; }
+.mb-4 { margin-bottom: 1rem; }
+.mb-5 { margin-bottom: 1.25rem; }
+.mb-6 { margin-bottom: 1.5rem; }
+.mb-8 { margin-bottom: 2rem; }
+.mt-1 { margin-top: 0.25rem; }
+.mt-2 { margin-top: 0.5rem; }
+
+/* Padding */
+.p-4 { padding: 1rem; }
+.p-5 { padding: 1.25rem; }
+.p-6 { padding: 1.5rem; }
+.p-8 { padding: 2rem; }
+.px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
+.px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
+.px-4 { padding-left: 1rem; padding-right: 1rem; }
+.px-5 { padding-left: 1.25rem; padding-right: 1.25rem; }
+.px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+.py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+.py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+.py-8 { padding-top: 2rem; padding-bottom: 2rem; }
+
+/* Text */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-left { text-align: left; }
+.text-white { color: #fff; }
+.text-slate-200 { color: var(--slate-200); }
+.text-slate-300 { color: var(--slate-300); }
+.text-slate-400 { color: var(--slate-400); }
+.text-slate-500 { color: var(--slate-500); }
+.text-slate-600 { color: var(--slate-600); }
+.text-accent { color: var(--accent-400); }
+.text-done { color: var(--phase-done); }
+.text-active { color: var(--phase-active); }
+.text-failed { color: var(--phase-failed); }
+.text-muted { color: var(--slate-500); }
+.whitespace-nowrap { white-space: nowrap; }
+
+/* Width / Height */
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+
+/* Border */
+.rounded-sm { border-radius: var(--radius-sm); }
+.rounded-md { border-radius: var(--radius-md); }
+.rounded-lg { border-radius: var(--radius-lg); }
+.rounded-xl { border-radius: var(--radius-xl); }
+.rounded-full { border-radius: 9999px; }
+
+/* Overflow */
+.overflow-hidden { overflow: hidden; }
+.overflow-x-auto { overflow-x: auto; }
+
+/* Position */
+.relative { position: relative; }
+.absolute { position: absolute; }
+
+/* Z-index */
+.z-0 { z-index: 0; }
+.z-10 { z-index: 10; }
+.z-50 { z-index: 50; }
+
+/* Opacity */
+.opacity-60 { opacity: 0.6; }
+
+/* Cursor */
+.cursor-pointer { cursor: pointer; }
+
+/* Transitions */
+.transition-colors { transition: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast); }
+.transition-all { transition: all var(--transition-normal); }
