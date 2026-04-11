@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atomic Flow — Dashboard</title>
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    /* Dashboard-specific styles */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-bar__label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--slate-500);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .filter-bar__count {
+      margin-left: auto;
+      font-size: 0.75rem;
+      color: var(--slate-500);
+      font-family: var(--font-mono);
+    }
+
+    .feature-card__title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      margin: 0;
+      word-break: break-word;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 4rem 1rem;
+      color: var(--slate-400);
+    }
+
+    .empty-state__icon {
+      width: 3rem;
+      height: 3rem;
+      margin: 0 auto 1rem;
+      color: var(--slate-600);
+    }
+
+    .empty-state__title {
+      font-size: 1.125rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--slate-300);
+    }
+
+    .empty-state__text {
+      font-size: 0.875rem;
+      color: var(--slate-500);
+    }
+
+    .empty-state__text code {
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      color: var(--accent-400);
+      background-color: rgba(14, 165, 233, 0.08);
+      padding: 0.125rem 0.375rem;
+      border-radius: var(--radius-sm);
+    }
+
+    /* Loading indicator */
+    .loading-indicator {
+      text-align: center;
+      padding: 4rem 0;
+      color: var(--slate-500);
+      font-size: 0.875rem;
+    }
+
+    .loading-indicator__dot {
+      display: inline-block;
+      width: 0.5rem;
+      height: 0.5rem;
+      border-radius: 9999px;
+      background-color: var(--accent-500);
+      margin: 0 0.125rem;
+      animation: dot-pulse 1.4s ease-in-out infinite;
+    }
+
+    .loading-indicator__dot:nth-child(2) { animation-delay: 0.2s; }
+    .loading-indicator__dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes dot-pulse {
+      0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+      40% { opacity: 1; transform: scale(1); }
+    }
+
+    /* Responsive adjustments for feature grid */
+    @media (max-width: 1023px) {
+      .grid-3 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 639px) {
+      .grid-3 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="container" style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.5rem">
+      <div style="display:flex;align-items:center;gap:0.75rem">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M13 2L4.09 12.63a1 1 0 0 0 .78 1.62H11l-1 7.75L19.91 11.37a1 1 0 0 0-.78-1.62H13l1-7.75Z"
+                fill="var(--accent-500)" fill-opacity="0.2"
+                stroke="var(--accent-400)" stroke-width="1.5"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div>
+          <h1 style="font-size:1.125rem;font-weight:600;color:#fff;margin:0">Atomic Flow</h1>
+          <p class="text-xs text-muted mono" style="margin:0">Dashboard</p>
+        </div>
+      </div>
+      <span class="text-xs text-muted mono">v0.1.0</span>
+    </div>
+  </header>
+
+  <main class="container" style="padding:2rem 1.5rem">
+    <!-- Stats row -->
+    <div id="stats-row" class="grid-4" style="margin-bottom:2rem"></div>
+
+    <!-- Filter bar -->
+    <div id="filter-bar" class="filter-bar"></div>
+
+    <!-- Feature cards or empty state -->
+    <div id="features-grid">
+      <div class="loading-indicator">
+        <span class="loading-indicator__dot"></span>
+        <span class="loading-indicator__dot"></span>
+        <span class="loading-indicator__dot"></span>
+      </div>
+    </div>
+  </main>
+
+  <script src="shared.js"></script>
+  <script>
+    /* ======================================================================
+       Dashboard — client-side logic
+       ======================================================================
+       XSS note: all user-supplied strings (slug, status, phase) are passed
+       through escapeHtml() from shared.js before DOM insertion. The
+       renderPipeline() helper in shared.js also escapes its inputs.
+       ====================================================================== */
+
+    var allFeatures = [];
+    var currentPhaseFilter = 'all';
+    var currentStatusFilter = 'all';
+
+    // -----------------------------------------------------------------------
+    // Init
+    // -----------------------------------------------------------------------
+    async function init() {
+      try {
+        allFeatures = await fetchFeatures();
+      } catch (e) {
+        allFeatures = [];
+      }
+      renderStats();
+      renderFilters();
+      applyFilters();
+    }
+
+    // -----------------------------------------------------------------------
+    // Stats Cards
+    // -----------------------------------------------------------------------
+    function renderStats() {
+      var total = allFeatures.length;
+      var active = countByStatus('active');
+      var done = countByStatus('done');
+      var cancelled = countByStatus('cancelled');
+
+      var el = document.getElementById('stats-row');
+      // Clear previous content
+      while (el.firstChild) el.removeChild(el.firstChild);
+
+      el.appendChild(buildStatsCard('Features', total, 'var(--accent-500)', svgIconFeatures()));
+      el.appendChild(buildStatsCard('Active', active, 'var(--phase-active)', svgIconActive()));
+      el.appendChild(buildStatsCard('Done', done, 'var(--phase-done)', svgIconDone()));
+      el.appendChild(buildStatsCard('Cancelled', cancelled, '#ef4444', svgIconCancelled()));
+    }
+
+    function countByStatus(status) {
+      return allFeatures.filter(function (f) { return f.status === status; }).length;
+    }
+
+    function buildStatsCard(label, value, color, iconSvg) {
+      var card = document.createElement('div');
+      card.className = 'stats-card';
+
+      var header = document.createElement('div');
+      header.className = 'stats-card__header';
+
+      var labelEl = document.createElement('span');
+      labelEl.className = 'stats-card__label';
+      labelEl.textContent = label;
+
+      var iconWrap = document.createElement('div');
+      iconWrap.className = 'stats-card__icon';
+      iconWrap.style.background = color + '20';
+      iconWrap.style.color = color;
+      // Icon SVGs are static/trusted strings from our own code
+      iconWrap.innerHTML = iconSvg;
+
+      header.appendChild(labelEl);
+      header.appendChild(iconWrap);
+
+      var valueEl = document.createElement('div');
+      valueEl.className = 'stats-card__value';
+      valueEl.style.color = color;
+      valueEl.textContent = value;
+
+      card.appendChild(header);
+      card.appendChild(valueEl);
+      return card;
+    }
+
+    // Small SVG icons for stats cards (trusted static strings)
+    function svgIconFeatures() {
+      return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>';
+    }
+    function svgIconActive() {
+      return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>';
+    }
+    function svgIconDone() {
+      return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>';
+    }
+    function svgIconCancelled() {
+      return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+    }
+
+    // -----------------------------------------------------------------------
+    // Filters
+    // -----------------------------------------------------------------------
+    function renderFilters() {
+      var bar = document.getElementById('filter-bar');
+      // Clear previous
+      while (bar.firstChild) bar.removeChild(bar.firstChild);
+
+      // Collect distinct phases and statuses from data
+      var phases = [];
+      var statuses = [];
+      allFeatures.forEach(function (f) {
+        if (f.phase && phases.indexOf(f.phase) === -1) phases.push(f.phase);
+        if (f.status && statuses.indexOf(f.status) === -1) statuses.push(f.status);
+      });
+
+      // Sort phases by pipeline order
+      phases.sort(function (a, b) {
+        return getPhaseIndex(a) - getPhaseIndex(b);
+      });
+
+      // Phase label
+      var phaseLabel = document.createElement('label');
+      phaseLabel.className = 'filter-bar__label';
+      phaseLabel.setAttribute('for', 'filter-phase');
+      phaseLabel.textContent = 'Phase';
+      bar.appendChild(phaseLabel);
+
+      // Phase select
+      var phaseSelect = document.createElement('select');
+      phaseSelect.id = 'filter-phase';
+      phaseSelect.className = 'form-select';
+
+      var allPhasesOpt = document.createElement('option');
+      allPhasesOpt.value = 'all';
+      allPhasesOpt.textContent = 'All phases';
+      phaseSelect.appendChild(allPhasesOpt);
+
+      phases.forEach(function (p) {
+        var opt = document.createElement('option');
+        opt.value = p;
+        opt.textContent = PHASE_LABELS[p] || p;
+        phaseSelect.appendChild(opt);
+      });
+      bar.appendChild(phaseSelect);
+
+      // Status label
+      var statusLabel = document.createElement('label');
+      statusLabel.className = 'filter-bar__label';
+      statusLabel.setAttribute('for', 'filter-status');
+      statusLabel.style.marginLeft = '0.5rem';
+      statusLabel.textContent = 'Status';
+      bar.appendChild(statusLabel);
+
+      // Status select
+      var statusSelect = document.createElement('select');
+      statusSelect.id = 'filter-status';
+      statusSelect.className = 'form-select';
+
+      var allStatusOpt = document.createElement('option');
+      allStatusOpt.value = 'all';
+      allStatusOpt.textContent = 'All statuses';
+      statusSelect.appendChild(allStatusOpt);
+
+      statuses.forEach(function (s) {
+        var opt = document.createElement('option');
+        opt.value = s;
+        opt.textContent = s;
+        statusSelect.appendChild(opt);
+      });
+      bar.appendChild(statusSelect);
+
+      // Count element
+      var countSpan = document.createElement('span');
+      countSpan.id = 'filter-count';
+      countSpan.className = 'filter-bar__count';
+      bar.appendChild(countSpan);
+
+      // Bind events
+      phaseSelect.addEventListener('change', function () {
+        currentPhaseFilter = this.value;
+        applyFilters();
+      });
+      statusSelect.addEventListener('change', function () {
+        currentStatusFilter = this.value;
+        applyFilters();
+      });
+    }
+
+    function applyFilters() {
+      var filtered = allFeatures.filter(function (f) {
+        if (currentPhaseFilter !== 'all' && f.phase !== currentPhaseFilter) return false;
+        if (currentStatusFilter !== 'all' && f.status !== currentStatusFilter) return false;
+        return true;
+      });
+
+      // Update count
+      var countEl = document.getElementById('filter-count');
+      if (countEl) {
+        if (currentPhaseFilter !== 'all' || currentStatusFilter !== 'all') {
+          countEl.textContent = filtered.length + ' of ' + allFeatures.length;
+        } else {
+          countEl.textContent = filtered.length + ' feature' + (filtered.length !== 1 ? 's' : '');
+        }
+      }
+
+      renderFeatures(filtered);
+    }
+
+    // -----------------------------------------------------------------------
+    // Feature Cards
+    // -----------------------------------------------------------------------
+    function renderFeatures(features) {
+      var grid = document.getElementById('features-grid');
+      // Clear previous content
+      while (grid.firstChild) grid.removeChild(grid.firstChild);
+
+      // Empty state: no features at all
+      if (!allFeatures.length) {
+        grid.className = '';
+        grid.appendChild(buildEmptyState(
+          '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4.09 12.63a1 1 0 0 0 .78 1.62H11l-1 7.75L19.91 11.37a1 1 0 0 0-.78-1.62H13l1-7.75Z"/></svg>',
+          'Nenhuma feature',
+          'Crie com <code>atomic-flow new &lt;name&gt;</code>'
+        ));
+        return;
+      }
+
+      // Empty state: filters produced no results
+      if (!features.length) {
+        grid.className = '';
+        grid.appendChild(buildEmptyState(
+          null,
+          'Nenhum resultado',
+          'Nenhuma feature corresponde aos filtros selecionados.'
+        ));
+        return;
+      }
+
+      grid.className = 'grid-3';
+      features.forEach(function (f) {
+        grid.appendChild(buildFeatureCard(f));
+      });
+    }
+
+    function buildEmptyState(iconHtml, title, text) {
+      var wrap = document.createElement('div');
+      wrap.className = 'empty-state';
+
+      if (iconHtml) {
+        var iconDiv = document.createElement('div');
+        iconDiv.className = 'empty-state__icon';
+        // Static trusted SVG from our own code
+        iconDiv.innerHTML = iconHtml;
+        wrap.appendChild(iconDiv);
+      }
+
+      var titleEl = document.createElement('p');
+      titleEl.className = 'empty-state__title';
+      titleEl.textContent = title;
+      wrap.appendChild(titleEl);
+
+      var textEl = document.createElement('p');
+      textEl.className = 'empty-state__text';
+      // text may contain trusted static HTML like <code> tags
+      textEl.innerHTML = text;
+      wrap.appendChild(textEl);
+
+      return wrap;
+    }
+
+    function buildFeatureCard(f) {
+      var link = document.createElement('a');
+      link.href = '/feature/' + encodeURIComponent(f.id);
+      link.className = 'feature-card';
+
+      var body = document.createElement('div');
+      body.className = 'feature-card__body';
+
+      // Header row: ID + status badge
+      var header = document.createElement('div');
+      header.className = 'feature-card__header';
+
+      var idSpan = document.createElement('span');
+      idSpan.className = 'mono text-xs text-muted';
+      idSpan.textContent = '#' + String(f.id).padStart(3, '0');
+
+      var statusBadge = document.createElement('span');
+      statusBadge.className = 'badge ' + featureStatusBadgeClass(f.status);
+      statusBadge.textContent = f.status;
+
+      header.appendChild(idSpan);
+      header.appendChild(statusBadge);
+      body.appendChild(header);
+
+      // Title (slug)
+      var title = document.createElement('h3');
+      title.className = 'feature-card__title';
+      title.textContent = f.slug;
+      body.appendChild(title);
+
+      // Meta row: phase badge + updated date
+      var meta = document.createElement('div');
+      meta.className = 'feature-card__meta';
+
+      var phaseBadge = document.createElement('span');
+      phaseBadge.className = 'badge ' + phaseBadgeClass(f.phase);
+      phaseBadge.textContent = (PHASE_ICONS[f.phase] || '') + ' ' + (PHASE_LABELS[f.phase] || f.phase);
+
+      var dateSpan = document.createElement('span');
+      dateSpan.className = 'text-xs text-muted';
+      dateSpan.textContent = formatDate(f.updated_at);
+
+      meta.appendChild(phaseBadge);
+      meta.appendChild(dateSpan);
+      body.appendChild(meta);
+
+      // Pipeline — renderPipeline returns a trusted HTML string built from
+      // static templates + escaped data inside shared.js
+      var pipelineWrap = document.createElement('div');
+      pipelineWrap.style.marginTop = '0.75rem';
+      // renderPipeline reads feature.current_phase; API returns .phase
+      var pipelineFeature = { current_phase: f.phase };
+      pipelineWrap.innerHTML = renderPipeline(pipelineFeature, []);
+
+      body.appendChild(pipelineWrap);
+      link.appendChild(body);
+      return link;
+    }
+
+    /**
+     * Map feature-level status to a badge class.
+     * Feature statuses: active, done, cancelled
+     */
+    function featureStatusBadgeClass(status) {
+      var map = {
+        active: 'badge--active',
+        done: 'badge--done',
+        cancelled: 'badge--failed'
+      };
+      return map[status] || getBadgeClass(status);
+    }
+
+    /**
+     * Map phase to a badge class for display.
+     */
+    function phaseBadgeClass(phase) {
+      if (phase === 'done') return 'badge--done';
+      return 'badge--active';
+    }
+
+    // -----------------------------------------------------------------------
+    // Boot
+    // -----------------------------------------------------------------------
+    init();
+  </script>
+</body>
+</html>
