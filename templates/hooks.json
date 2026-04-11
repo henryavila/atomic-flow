@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "node node_modules/@henryavila/atomic-flow/bin/cli.js hook session-start"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "type": "command",
+        "command": "node node_modules/@henryavila/atomic-flow/bin/cli.js hook pre-tool-use",
+        "toolNames": ["Write", "Edit", "MultiEdit", "NotebookEdit"]
+      }
+    ]
+  }
+}
