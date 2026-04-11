@@ -4,6 +4,11 @@ import { existsSync, rmSync, readFileSync, writeFileSync, readdirSync } from 'no
 import { join, relative } from 'node:path';
 import { getConfig } from './config.js';
 
+export function checkNeedsConfirmation(targetDir) {
+  const dbPath = join(targetDir, '.ai', 'atomic-flow.db');
+  return existsSync(dbPath);
+}
+
 export function uninstall(targetDir, opts = {}) {
   const { ide = 'claude-code' } = opts;
   const config = getConfig(ide);

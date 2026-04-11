@@ -162,3 +162,32 @@ describe('install — not a git repo', () => {
     );
   });
 });
+
+describe('install — EC07 .ai/ warning', () => {
+  let tmpDir;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'install-ec07-'));
+    execFileSync('git', ['init'], { cwd: tmpDir, stdio: 'pipe' });
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('warns when .ai/ directory already exists', async () => {
+    mkdirSync(join(tmpDir, '.ai'), { recursive: true });
+    writeFileSync(join(tmpDir, '.ai', 'existing-file.txt'), 'keep me');
+
+    const result = await install(tmpDir);
+
+    assert.ok(result.warnings.some(w => w.includes('.ai/')));
+    // Existing file should be preserved
+    assert.ok(existsSync(join(tmpDir, '.ai', 'existing-file.txt')));
+  });
+
+  it('no warning when .ai/ does not exist', async () => {
+    const result = await install(tmpDir);
+    assert.ok(!result.warnings.some(w => w.includes('.ai/')));
+  });
+});

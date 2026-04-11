@@ -95,7 +95,18 @@ async function cmdInstall(args) {
 
 async function cmdUninstall(args) {
   try {
-    const { uninstall } = await import('../src/uninstall.js');
+    const { uninstall, checkNeedsConfirmation } = await import('../src/uninstall.js');
+    const skipConfirm = args.includes('--yes') || args.includes('-y');
+
+    if (!skipConfirm && checkNeedsConfirmation(process.cwd())) {
+      const { confirm } = await import('../src/prompts.js');
+      const proceed = await confirm('Database exists — active features may be lost. Continue?');
+      if (!proceed) {
+        console.log('Uninstall cancelled.');
+        return;
+      }
+    }
+
     const result = uninstall(process.cwd());
 
     if (result.warnings.length) {

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { uninstall } from '../src/uninstall.js';
+import { uninstall, checkNeedsConfirmation } from '../src/uninstall.js';
 
 /**
  * Helper: scaffold a full atomic-flow install inside a temp directory.
@@ -201,5 +201,28 @@ describe('uninstall', () => {
 
     const mcp = JSON.parse(readFileSync(join(tmpDir, '.mcp.json'), 'utf-8'));
     assert.equal(mcp.other, true);
+  });
+});
+
+describe('checkNeedsConfirmation', () => {
+  let tmpDir;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), 'uninstall-confirm-'));
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('returns true when database file exists', () => {
+    mkdirSync(join(tmpDir, '.ai'), { recursive: true });
+    writeFileSync(join(tmpDir, '.ai', 'atomic-flow.db'), 'fake-db');
+
+    assert.equal(checkNeedsConfirmation(tmpDir), true);
+  });
+
+  it('returns false when database does not exist', () => {
+    assert.equal(checkNeedsConfirmation(tmpDir), false);
   });
 });

@@ -45,14 +45,14 @@ export function renderSkill(source, ide = 'claude-code') {
 /**
  * Validate that all template variables have been resolved.
  * @param {string} content - Rendered content to validate
- * @returns {string[]} Array of unresolved variable names (empty = valid)
+ * @returns {{ valid: boolean, unresolvedVars: string[] }}
  */
 export function validateRendered(content) {
-  const unresolved = [];
+  const unresolvedVars = [];
   const re = /\{\{(\w+)\}\}/g;
   let match;
   while ((match = re.exec(content)) !== null) {
-    unresolved.push(match[1]);
+    unresolvedVars.push(match[1]);
   }
-  return unresolved;
+  return { valid: unresolvedVars.length === 0, unresolvedVars };
 }

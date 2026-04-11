@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, rmSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -14,7 +14,7 @@ const PACKAGE_ROOT = join(__dirname, '..');
 
 export async function install(targetDir, opts = {}) {
   const { ide = 'claude-code', force = false } = opts;
-  const result = { success: true, installed: [], skipped: [], errors: [] };
+  const result = { success: true, installed: [], skipped: [], errors: [], warnings: [] };
 
   // 1. Validate: git repo exists
   if (!isGitRepo(targetDir)) throw new Error('Git repository required');
@@ -23,14 +23,34 @@ export async function install(targetDir, opts = {}) {
   const major = parseInt(process.versions.node);
   if (major < 18) throw new Error('Node.js >= 18 required');
 
+  // EC07: warn if .ai/ already exists
+  const aiDir = join(targetDir, '.ai');
+  if (existsSync(aiDir)) {
+    result.warnings.push('.ai/ directory already exists — contents will be preserved');
+  }
+
   const config = getConfig(ide);
+
+  // EC03: track created paths for SIGINT cleanup
+  const created = [];
+  const onAbort = () => {
+    for (const p of created.reverse()) {
+      try { rmSync(p, { recursive: true, force: true }); } catch {}
+    }
+    process.exit(1);
+  };
+  process.on('SIGINT', onAbort);
+
+  try {
 
   // 3. Create directories
   const dirs = [
     join(targetDir, '.ai', 'features'),
     join(targetDir, config.skillDir),
   ];
-  for (const d of dirs) mkdirSync(d, { recursive: true });
+  for (const d of dirs) {
+    if (!existsSync(d)) { mkdirSync(d, { recursive: true }); created.push(d); }
+  }
 
   // 4. Read skill catalog and install skills
   const catalogPath = join(PACKAGE_ROOT, 'meta', 'skills.yaml');
@@ -44,9 +64,9 @@ export async function install(targetDir, opts = {}) {
     const rendered = renderSkill(source, ide);
 
     // Validate no unresolved vars
-    const unresolvedVars = validateRendered(rendered);
-    if (unresolvedVars.length > 0) {
-      result.errors.push(`Skill ${skill.slug}: unresolved vars ${unresolvedVars.join(', ')}`);
+    const validation = validateRendered(rendered);
+    if (!validation.valid) {
+      result.errors.push(`Skill ${skill.slug}: unresolved vars ${validation.unresolvedVars.join(', ')}`);
       result.success = false;
       continue;
     }
@@ -104,6 +124,10 @@ export async function install(targetDir, opts = {}) {
   saveManifest(manifest, targetDir);
 
   return result;
+
+  } finally {
+    process.removeListener('SIGINT', onAbort);
+  }
 }
 
 function isGitRepo(dir) {

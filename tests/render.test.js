@@ -36,16 +36,18 @@ describe('renderTemplate', () => {
 });
 
 describe('validateRendered', () => {
-  it('catches {{UNKNOWN_VAR}} — returns array with UNKNOWN_VAR', () => {
+  it('catches {{UNKNOWN_VAR}} — returns { valid: false, unresolvedVars }', () => {
     const content = 'Hello {{UNKNOWN_VAR}}, welcome to {{APP}}.';
     const result = validateRendered(content);
-    assert.deepEqual(result, ['UNKNOWN_VAR', 'APP']);
+    assert.equal(result.valid, false);
+    assert.deepEqual(result.unresolvedVars, ['UNKNOWN_VAR', 'APP']);
   });
 
-  it('returns empty array for fully resolved content', () => {
+  it('returns { valid: true } for fully resolved content', () => {
     const content = 'Hello world, no vars here.';
     const result = validateRendered(content);
-    assert.deepEqual(result, []);
+    assert.equal(result.valid, true);
+    assert.deepEqual(result.unresolvedVars, []);
   });
 });
 
