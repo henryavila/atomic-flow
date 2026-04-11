@@ -1,0 +1,53 @@
+# Atomic Flow — Skill Catalog
+# Used by src/install.js to route skill files during installation.
+
+skills:
+  - slug: atomic-flow:1-research
+    name: Research
+    source: skills/en/1-research.md
+    phase: research
+
+  - slug: atomic-flow:2-spec
+    name: Spec
+    source: skills/en/2-spec.md
+    phase: spec
+
+  - slug: atomic-flow:3-validate
+    name: Validate
+    source: skills/en/3-validate.md
+    phase: validate
+
+  - slug: atomic-flow:4-decompose
+    name: Decompose
+    source: skills/en/4-decompose.md
+    phase: decompose
+
+  - slug: atomic-flow:5-implement
+    name: Implement
+    source: skills/en/5-implement.md
+    phase: implement
+
+  - slug: atomic-flow:6-review
+    name: Review
+    source: skills/en/6-review.md
+    phase: review
+
+  - slug: atomic-flow:7-ship
+    name: Ship
+    source: skills/en/7-ship.md
+    phase: ship
+
+  - slug: atomic-flow:status
+    name: Status
+    source: skills/en/status.md
+    phase: null
+
+  - slug: atomic-flow:gate
+    name: Gate
+    source: skills/en/gate.md
+    phase: null
+
+  - slug: atomic-flow:new
+    name: New Feature
+    source: skills/en/new.md
+    phase: null
